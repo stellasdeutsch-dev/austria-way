@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Австрия: план поступления — офлайн-планировщик</title>
+<meta name="description" content="Пошаговый план поступления в австрийский университет: Zulassung, Aufenthaltsbewilligung, ÖH-Beitrag, Meldezettel. Разные планы для граждан ЕС и третьих стран, дедлайны от начала семестра, экспорт в календарь. Работает офлайн, без сервера и регистрации.">
+<meta name="robots" content="index,follow">
+<link rel="canonical" href="https://stellasdeutsch-dev.github.io/austria-way/">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Австрия: план поступления">
+<meta property="og:description" content="План поступления в австрийский вуз с дедлайнами от начала семестра. Отдельные маршруты для граждан ЕС и третьих стран. Работает офлайн.">
+<meta property="og:url" content="https://stellasdeutsch-dev.github.io/austria-way/">
+<meta name="twitter:card" content="summary">
+
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+
+<!--
+  Inter лежит в fonts/ этого репозитория и подключается через @font-face
+  в css/app.css. С fonts.googleapis.com он сознательно НЕ грузится:
+  страница заявляет, что работает офлайн и не обращается к внешним сайтам,
+  и внешний шрифт был бы прямым противоречием этому.
+-->
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<a class="skip-link" href="#main">Перейти к содержимому</a>
+
+<div id="globalBanner" class="global-banner" role="alert" hidden>
+  <p id="globalBannerText"></p>
+  <button type="button" id="globalBannerClose" class="banner-close" aria-label="Закрыть предупреждение">×</button>
+</div>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+          <path d="M4 18 9 7l4 7 3-4 4 8" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      <span>Австрия&nbsp;— план</span>
+    </div>
+
+    <div class="topbar-meta">
+      <span class="badge">Шаблон — проверяйте сроки по ссылкам в шагах</span>
+      <button class="btn btn-ghost btn-sm no-print" id="calendarBtn" type="button" hidden>В календарь</button>
+      <button class="btn btn-ghost btn-sm no-print" id="printBtn" type="button" hidden>Печать / PDF</button>
+      <button class="btn btn-ghost btn-sm no-print" id="exportBtn" type="button" hidden>Скачать план</button>
+      <button class="btn btn-ghost btn-sm no-print" id="resetBtn" type="button" hidden>Начать заново</button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ============================ ЭКРАН 1: АНКЕТА ==================== -->
+  <section class="screen" id="screenIntake">
+    <div class="intake">
+      <div class="intake-head card-dark">
+        <p class="kicker">Австрия</p>
+        <h1>Поступление шаг за шагом</h1>
+        <p class="lede">
+          План поступления в австрийский университет: Zulassung, вид на жительство,
+          ÖH-Beitrag, Meldezettel. Для граждан ЕС и третьих стран это два разных
+          маршрута разной длины — план собирается под ваш случай, со сроками назад
+          от начала семестра. Работает прямо в браузере: без сервера, без обращения
+          к внешним сайтам и без регистрации.
+        </p>
+        <div class="pill-row">
+          <span class="pill-dark">ЕС и третьи страны — разные планы</span>
+          <span class="pill-dark">Ссылки на официальные источники</span>
+          <span class="pill-dark">Работает офлайн</span>
+        </div>
+        <div class="quickfill">
+          <button class="btn btn-outline btn-sm" type="button" id="fillSampleBtn">
+            Заполнить примером
+          </button>
+          <button class="btn btn-outline btn-sm" type="button" id="importBtn">
+            Загрузить план из файла
+          </button>
+          <input type="file" id="importFile" accept="application/json" hidden>
+          <span class="hint">Пример — чтобы посмотреть план сразу; загрузка — чтобы восстановить ранее скачанный план</span>
+        </div>
+      </div>
+
+      <form id="profileForm" novalidate>
+
+        <fieldset class="card">
+          <legend>Гражданство <span class="optional">— от него зависит весь план</span></legend>
+          <p class="fieldset-note">
+            Это единственное поле, которое меняет не текст, а состав шагов: для граждан ЕС/ЕЭЗ и Швейцарии
+            нет визы и вида на жительство до въезда, нет подтверждения средств и обычно нет платы за обучение.
+          </p>
+
+          <div class="field">
+            <div class="radio-row" role="radiogroup" aria-label="Группа гражданства">
+              <label class="radio">
+                <input type="radio" name="citizenshipGroup" value="third" checked>
+                <span>Третья страна (Казахстан, Россия, Украина…)</span>
+              </label>
+              <label class="radio">
+                <input type="radio" name="citizenshipGroup" value="eu">
+                <span>ЕС / ЕЭЗ / Швейцария</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <label class="field">
+              <span class="label">Имя <b aria-hidden="true">*</b></span>
+              <input name="name" required autocomplete="given-name" placeholder="Например, Аружан">
+            </label>
+
+            <label class="field">
+              <span class="label">Страна гражданства</span>
+              <input name="citizenship" placeholder="Казахстан">
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="card">
+          <legend>Куда поступаете</legend>
+
+          <div class="grid-2">
+            <label class="field">
+              <span class="label">Университет <b aria-hidden="true">*</b></span>
+              <input name="university" required placeholder="Universität Wien">
+            </label>
+
+            <label class="field">
+              <span class="label">Программа <b aria-hidden="true">*</b></span>
+              <input name="program" required placeholder="MSc Informatik">
+            </label>
+
+            <label class="field">
+              <span class="label">Уровень</span>
+              <select name="degreeLevel">
+                <option value="bachelor">Бакалавриат</option>
+                <option value="master" selected>Магистратура</option>
+                <option value="phd">Докторантура</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span class="label">Язык программы</span>
+              <select name="programLanguage">
+                <option value="de" selected>Немецкий</option>
+                <option value="en">Английский</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span class="label">Семестр начала</span>
+              <select name="semester">
+                <option value="ws" selected>Зимний — с 1 октября</option>
+                <option value="ss">Летний — с 1 марта</option>
+              </select>
+              <span class="hint">Сроки в плане считаются назад от начала семестра</span>
+            </label>
+
+            <label class="field">
+              <span class="label">Год начала</span>
+              <input name="intakeYear" type="number" min="2026" max="2032" placeholder="2027">
+              <span class="hint">Пусто — возьму ближайший подходящий</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="card">
+          <legend>Язык</legend>
+
+          <div class="field">
+            <span class="label">Сертификат нужного уровня уже есть?</span>
+            <div class="radio-row" role="radiogroup" aria-label="Языковой сертификат">
+              <label class="radio">
+                <input type="radio" name="languageReady" value="no" checked>
+                <span>Ещё нет</span>
+              </label>
+              <label class="radio">
+                <input type="radio" name="languageReady" value="yes">
+                <span>Уже есть</span>
+              </label>
+            </div>
+            <span class="hint">Если нет — в план добавится подготовка и сдача экзамена, это самый долгий пункт</span>
+          </div>
+        </fieldset>
+
+        <fieldset class="card">
+          <legend>Дополнительный контекст <span class="optional">необязательно</span></legend>
+          <label class="field">
+            <span class="label">Что ещё важно учесть</span>
+            <textarea name="notes" rows="3"
+                      placeholder="Нужно общежитие, загранпаспорт истекает в мае…"></textarea>
+            <span class="hint">Появится закреплённой заметкой над планом</span>
+          </label>
+        </fieldset>
+
+        <div class="submit-row">
+          <span class="hint" style="margin:0">Все поля остаются только в вашем браузере (localStorage) — экспортируйте план файлом, если нужна резервная копия</span>
+          <button class="btn btn-primary btn-lg" type="submit" id="submitBtn">
+            Построить план
+          </button>
+        </div>
+
+        <p class="form-error" id="formError" role="alert" hidden></p>
+      </form>
+    </div>
+  </section>
+
+  <!-- ============================ ЭКРАН 2: ЗАГРУЗКА ================== -->
+  <section class="screen" id="screenLoading" hidden>
+    <div class="loading">
+      <ol class="steps-progress" id="loadingSteps">
+        <li data-step="build"><span class="dot"></span>Собираем план по вашим данным</li>
+        <li data-step="render"><span class="dot"></span>Готовим таймлайн</li>
+      </ol>
+      <p class="loading-note">План собирается по шаблону прямо в браузере, без обращения к серверу.</p>
+    </div>
+  </section>
+
+  <!-- ============================ ЭКРАН 3: ВОССТАНОВЛЕНИЕ ============= -->
+  <section class="screen" id="screenRecovery" hidden>
+    <div class="intake">
+      <div class="card">
+        <h1>Не удалось прочитать сохранённые данные</h1>
+        <p class="lede" style="margin-top:10px">
+          Локально сохранённые данные повреждены или имеют неожиданный формат —
+          такое может случиться, если вкладка закрылась во время записи, или
+          формат менялся между версиями инструмента. Можно скачать их как есть
+          для ручного разбора, либо начать заново — прежние данные будут удалены
+          из этого браузера безвозвратно.
+        </p>
+        <div class="submit-row">
+          <button type="button" class="btn btn-outline" id="downloadRawBtn">Скачать повреждённые данные</button>
+          <button type="button" class="btn btn-primary" id="startOverRecoveryBtn">Начать заново</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ ЭКРАН 4: РОАДМАП ==================== -->
+  <section class="screen workspace" id="screenRoadmap" hidden>
+
+    <div class="roadmap-col">
+      <div class="roadmap-head card-dark">
+        <div>
+          <h1 id="roadmapTitle"></h1>
+          <p class="summary" id="roadmapSummary"></p>
+        </div>
+        <span class="confidence" id="confidence"></span>
+      </div>
+
+      <div class="progress">
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        <span class="progress-label" id="progressLabel"></span>
+      </div>
+
+      <div class="filters" aria-label="Фильтр шагов">
+        <button class="chip is-active" data-filter="all" type="button">Все</button>
+        <button class="chip" data-filter="not_started" type="button">Не начато</button>
+        <button class="chip" data-filter="in_progress" type="button">В процессе</button>
+        <button class="chip" data-filter="done" type="button">Готово</button>
+      </div>
+
+      <section class="panel focus-panel" id="focusPanel" hidden>
+        <h2>Что делать сейчас</h2>
+        <div id="focusBody"></div>
+      </section>
+
+      <section class="panel notes-panel" id="notesPanel" hidden>
+        <h2>Ваша заметка</h2>
+        <p id="notesText"></p>
+      </section>
+
+      <ol class="timeline" id="timeline"></ol>
+
+      <section class="panel" id="openQuestionsPanel" hidden>
+        <h2>Что стоит уточнить</h2>
+        <ul id="openQuestions"></ul>
+      </section>
+
+      <section class="panel" id="contactsPanel" hidden>
+        <h2>Контакты</h2>
+        <ul id="contacts"></ul>
+      </section>
+    </div>
+
+    <!-- ------------------------------ ЧАТ ------------------------------ -->
+    <aside class="chat-col no-print" aria-label="Чат с ассистентом">
+      <div class="chat-head">
+        <h2>Ассистент</h2>
+        <p id="chatContext"></p>
+      </div>
+
+      <div class="chat-log" id="chatLog" aria-live="polite"></div>
+
+      <div class="chat-suggestions" id="chatSuggestions">
+        <button type="button" class="chip chip-sm">Что дальше?</button>
+        <button type="button" class="chip chip-sm">Сколько осталось?</button>
+        <button type="button" class="chip chip-sm">Когда подавать на пребывание?</button>
+        <button type="button" class="chip chip-sm">Зачем апостиль?</button>
+      </div>
+
+      <form class="chat-form" id="chatForm">
+        <label class="sr-only" for="chatInput">Сообщение ассистенту</label>
+        <textarea id="chatInput" rows="1" placeholder="Спросите что угодно про ваш план…"></textarea>
+        <button class="btn btn-primary btn-icon" type="submit" id="chatSend" aria-label="Отправить">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M4 12h15m0 0-6-6m6 6-6 6" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </form>
+    </aside>
+  </section>
+
+  <!-- ========================= ЭКРАН 5: ШАГ ========================== -->
+  <section class="screen screen-step" id="screenStep" hidden>
+    <article id="stepDetail"></article>
+  </section>
+</main>
+
+<script src="js/app.js" type="module"></script>
+</body>
+</html>
