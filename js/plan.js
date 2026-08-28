@@ -64,13 +64,6 @@ export function dateFromToday(offsetDays) {
   return toLocalISODate(addDays(todayLocalNoon(), offsetDays));
 }
 
-/** "YYYY-MM" из поля intakeDate → Date на 1-е число этого месяца, полдень. */
-function parseIntakeMonth(value) {
-  if (!value || !/^\d{4}-\d{2}$/.test(value)) return null;
-  const [y, m] = value.split('-').map(Number);
-  return new Date(y, m - 1, 1, 12, 0, 0);
-}
-
 /** Дата за leadDays до начала учёбы, либо '' если intake неизвестен. */
 function beforeIntake(intake, leadDays) {
   if (!intake) return '';

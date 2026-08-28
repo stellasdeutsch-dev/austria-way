@@ -525,7 +525,19 @@ function deadlineTag(step) {
 export function renderPanels(state) {
   const { roadmap } = state;
   fillPanel('#openQuestionsPanel', '#openQuestions', roadmap.openQuestions, (q) => esc(q));
-  fillPanel('#contactsPanel', '#contacts', roadmap.contacts, (c) => `${esc(c.label)}: ${esc(c.value)}`);
+  // У контактов здесь настоящие официальные адреса, а не заглушка, поэтому
+  // они должны быть кликабельными. Раньше url молча терялся: строка
+  // рендерилась как текст, и проверенная ссылка на migration.gv.at была
+  // бесполезна. Внешние ссылки открываются в новой вкладке, чтобы не
+  // потерять заполненный план.
+  fillPanel('#contactsPanel', '#contacts', roadmap.contacts, (c) =>
+    c.url
+      ? `<a class="panel-link" href="${esc(c.url)}" target="_blank" rel="noopener noreferrer">${esc(c.label)}
+           <span class="sd-ext" aria-hidden="true">↗</span>
+           <span class="sr-only">(откроется в новой вкладке)</span></a>
+         <span class="panel-host">${esc(c.value)}</span>`
+      : `${esc(c.label)}: ${esc(c.value)}`
+  );
 }
 
 function fillPanel(panelSel, listSel, items, render) {

@@ -846,6 +846,14 @@ ul.sd-list li::before{
 }
 .sd-links a:hover{background:var(--brand-100);border-color:var(--accent-strong)}
 .sd-ext{font-size:11px;opacity:.75}
+
+/* Ссылки в панели «Куда смотреть» */
+.panel-link{
+  color:var(--accent-deep);font-weight:600;text-decoration:none;
+  border-bottom:1px solid var(--brand-100);
+}
+.panel-link:hover{border-bottom-color:currentColor}
+.panel-host{color:var(--ink-500);font-size:13px;margin-left:8px}
 .sd-own{margin-top:24px;padding:14px 16px;background:var(--bg-alt);border-radius:var(--radius)}
 
 /* ---- предыдущий / следующий ---- */
