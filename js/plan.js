@@ -145,9 +145,17 @@ function admissionDeadline(startDate, semesterId) {
 export function semesterStart(semesterId, yearHint) {
   const spec = SEMESTERS.find((s) => s.id === semesterId) ?? SEMESTERS[0];
   const today = todayLocalNoon();
-  let year = yearHint ? Number(yearHint) : today.getFullYear();
+
+  // Год приходит из поля формы, то есть из чего угодно. Number('abc') даёт
+  // NaN, и дальше весь план получал даты вида "NaN-NaN-NaN"; год 99999
+  // рисовал столь же бессмысленный план. Непригодное значение игнорируем и
+  // считаем от ближайшего будущего семестра, а не ломаем план молча.
+  const parsed = Number(yearHint);
+  const usable = Number.isFinite(parsed) && parsed >= 2000 && parsed <= 2100;
+
+  let year = usable ? Math.trunc(parsed) : today.getFullYear();
   let d = new Date(year, spec.month, 1, 12);
-  if (!yearHint) {
+  if (!usable) {
     while (d <= today) {
       year += 1;
       d = new Date(year, spec.month, 1, 12);

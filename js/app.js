@@ -111,12 +111,15 @@ function showScreen(name) {
   $('#screenStep').hidden = name !== 'step';
   $('#screenCalendar').hidden = name !== 'calendar';
 
-  // Действия над планом осмысленны на всех его экранах.
+  // Действия над планом осмысленны на всех его экранах. Обращаемся через
+  // необязательный доступ: если разметка и скрипт разошлись (например,
+  // браузер держит в кэше старый app.js после правки index.html), пусть
+  // пропадёт одна кнопка, а не весь интерфейс вместе с экранами.
   const hasPlan = name === 'roadmap' || name === 'step' || name === 'calendar';
-  $('#resetBtn').hidden = !hasPlan;
-  $('#pdfBtn').hidden = !hasPlan;
-  $('#backupBtn').hidden = !hasPlan;
-  $('#calendarLink').hidden = !hasPlan;
+  for (const id of ['#resetBtn', '#pdfBtn', '#backupBtn', '#calendarLink']) {
+    const el = $(id);
+    if (el) el.hidden = !hasPlan;
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -245,14 +248,23 @@ function initForm() {
     // Небольшая пауза только ради ощущения «идёт сборка» — вся работа
     // на самом деле синхронна и не требует сети.
     setTimeout(() => {
-      markLoading('render');
-      state.profile = profile;
-      state.roadmap = normalizeRoadmap(buildRoadmap(profile));
-      state.messages = [];
-      state.pendingProposal = null;
-      state.filter = 'all';
-      state.ui = createTimelineUiState();
-      persistState();
+      try {
+        markLoading('render');
+        state.profile = profile;
+        state.roadmap = normalizeRoadmap(buildRoadmap(profile));
+        state.messages = [];
+        state.pendingProposal = null;
+        state.filter = 'all';
+        state.ui = createTimelineUiState();
+        persistState();
+      } catch (err) {
+        // Раньше любая ошибка здесь оставляла экран загрузки навсегда:
+        // глобальный обработчик показывал баннер, но вернуться к анкете
+        // было уже нечем. Возвращаем форму и говорим, что произошло.
+        showScreen('intake');
+        showFormError(`Не удалось собрать план: ${err.message}. Проверьте поля и попробуйте ещё раз.`);
+        return;
+      }
 
       setTimeout(() => {
         // Новый план — всегда начинаем со списка, даже если в адресе остался
@@ -266,7 +278,7 @@ function initForm() {
   });
 
   $('#resetBtn').addEventListener('click', () => {
-    if (!confirm('Начать заново? Текущий план и переписка будут потеряны. Если хотите сохранить их — сначала скачайте план (кнопка «Скачать план»).')) return;
+    if (!confirm('Начать заново? Текущий план и переписка будут потеряны. Если хотите сохранить их — сначала нажмите «Резервная копия».')) return;
     store.clearState();
     location.reload();
   });
