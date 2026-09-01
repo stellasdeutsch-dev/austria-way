@@ -155,8 +155,15 @@ export function semesterStart(semesterId, yearHint) {
 
   let year = usable ? Math.trunc(parsed) : today.getFullYear();
   let d = new Date(year, spec.month, 1, 12);
+
+  // Если год не задан, мало выбрать просто будущий семестр: самый ранний шаг
+  // плана считается почти за восемь месяцев до старта, и ближайший семестр
+  // открывался бы сплошной красной простынёй «просрочено» — как будто
+  // опоздал ещё до начала. Берём первый, до которого хватает разбега.
+  // Явно указанный год не трогаем: человек вправе смотреть и на прошлый.
+  const MIN_RUNWAY_DAYS = 250;
   if (!usable) {
-    while (d <= today) {
+    while ((d - today) / 86400000 < MIN_RUNWAY_DAYS) {
       year += 1;
       d = new Date(year, spec.month, 1, 12);
     }
