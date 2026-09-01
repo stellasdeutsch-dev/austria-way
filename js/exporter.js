@@ -9,6 +9,17 @@
 
 import { SCHEMA_VERSION } from './store.js';
 
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 function downloadText(text, filename, mime = 'application/json') {
   const blob = new Blob([text], { type: mime });
   const url = URL.createObjectURL(blob);
@@ -74,8 +85,16 @@ export function importPlanFile(file) {
   });
 }
 
-export function printPlan() {
-  window.print();
+/**
+ * Скачивает план как PDF. Шрифты и генератор подгружаются только сейчас,
+ * по нажатию, чтобы 80 КБ шрифтов не висели на каждом открытии страницы.
+ */
+export async function exportPdf(state) {
+  const { buildPDF, loadPdfFonts } = await import('./pdf.js');
+  const fonts = await loadPdfFonts();
+  const bytes = await buildPDF(state, fonts);
+  const name = (state.profile?.program || 'plan').replace(/[^\p{L}\p{N}_-]+/gu, '-').slice(0, 40);
+  downloadBlob(new Blob([bytes], { type: 'application/pdf' }), `plan-${name}-${todayStamp()}.pdf`);
 }
 
 /* ------------------------------------------------------------------ */

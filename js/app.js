@@ -19,7 +19,7 @@ import * as store from './store.js';
 import { buildRoadmap, normalizeRoadmap, applyOperations } from './plan.js';
 import { initTimeline, createTimelineUiState, refreshRoadmap, initFilters } from './timeline.js';
 import { heuristicReply } from './assistant.js';
-import { exportPlan, importPlanFile, downloadRaw, printPlan, exportCalendar } from './exporter.js';
+import { exportPdf, exportPlan, importPlanFile, downloadRaw, exportCalendar } from './exporter.js';
 import { renderStepPage, initStepView, currentStepId } from './stepview.js';
 import { renderCalendar, initCalendar, createCalendarUiState } from './calendar.js';
 
@@ -114,8 +114,8 @@ function showScreen(name) {
   // Действия над планом осмысленны на всех его экранах.
   const hasPlan = name === 'roadmap' || name === 'step' || name === 'calendar';
   $('#resetBtn').hidden = !hasPlan;
-  $('#exportBtn').hidden = !hasPlan;
-  $('#printBtn').hidden = !hasPlan;
+  $('#pdfBtn').hidden = !hasPlan;
+  $('#backupBtn').hidden = !hasPlan;
   $('#calendarLink').hidden = !hasPlan;
 }
 
@@ -317,8 +317,26 @@ function initPrintExpand() {
 }
 
 function initExportImport() {
-  $('#exportBtn').addEventListener('click', () => exportPlan(state));
-  $('#printBtn').addEventListener('click', () => printPlan());
+  // PDF — чтобы читать и печатать; .json — чтобы восстановить план на другом
+  // устройстве. Это разные задачи, и вторая нужна: план существует только в
+  // localStorage одного браузера, и импорт без экспорта был бы бесполезен.
+  $('#backupBtn').addEventListener('click', () => exportPlan(state));
+  $('#pdfBtn').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    const label = btn.textContent;
+    // Сборка PDF занимает доли секунды, но шрифты тянутся по сети при
+    // первом нажатии — без обратной связи кнопка выглядит нажатой впустую.
+    btn.disabled = true;
+    btn.textContent = 'Готовлю…';
+    try {
+      await exportPdf(state);
+    } catch (err) {
+      showBanner(`Не удалось собрать PDF: ${err.message}`);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = label;
+    }
+  });
 
   const fileInput = $('#importFile');
   $('#importBtn').addEventListener('click', () => fileInput.click());
