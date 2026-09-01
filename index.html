@@ -47,7 +47,7 @@
 
     <div class="topbar-meta">
       <span class="badge">Шаблон — проверяйте сроки по ссылкам в шагах</span>
-      <button class="btn btn-ghost btn-sm no-print" id="calendarBtn" type="button" hidden>В календарь</button>
+      <a class="btn btn-ghost btn-sm no-print" id="calendarLink" href="#/calendar" hidden>Календарь</a>
       <button class="btn btn-ghost btn-sm no-print" id="printBtn" type="button" hidden>Печать / PDF</button>
       <button class="btn btn-ghost btn-sm no-print" id="exportBtn" type="button" hidden>Скачать план</button>
       <button class="btn btn-ghost btn-sm no-print" id="resetBtn" type="button" hidden>Начать заново</button>
@@ -321,6 +321,14 @@
   <!-- ========================= ЭКРАН 5: ШАГ ========================== -->
   <section class="screen screen-step" id="screenStep" hidden>
     <article id="stepDetail"></article>
+  </section>
+
+  <!-- ====================== ЭКРАН 6: КАЛЕНДАРЬ ======================= -->
+  <section class="screen screen-calendar" id="screenCalendar" hidden>
+    <nav class="sd-back-row">
+      <a class="sd-back" href="#/">← Все шаги плана</a>
+    </nav>
+    <div id="calendarBody"></div>
   </section>
 </main>
 

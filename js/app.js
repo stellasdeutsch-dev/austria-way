@@ -21,6 +21,7 @@ import { initTimeline, createTimelineUiState, refreshRoadmap, initFilters } from
 import { heuristicReply } from './assistant.js';
 import { exportPlan, importPlanFile, downloadRaw, printPlan, exportCalendar } from './exporter.js';
 import { renderStepPage, initStepView, currentStepId } from './stepview.js';
+import { renderCalendar, initCalendar, createCalendarUiState } from './calendar.js';
 
 const state = {
   profile: null,
@@ -30,6 +31,7 @@ const state = {
   filter: 'all',
   streaming: false,
   ui: createTimelineUiState(),
+  calendarUi: createCalendarUiState(),
 };
 
 /* ------------------------------------------------------------------ */
@@ -107,13 +109,14 @@ function showScreen(name) {
   $('#screenRoadmap').hidden = name !== 'roadmap';
   $('#screenRecovery').hidden = name !== 'recovery';
   $('#screenStep').hidden = name !== 'step';
+  $('#screenCalendar').hidden = name !== 'calendar';
 
-  // Кнопки плана осмысленны и в списке, и на странице шага.
-  const hasPlan = name === 'roadmap' || name === 'step';
+  // Действия над планом осмысленны на всех его экранах.
+  const hasPlan = name === 'roadmap' || name === 'step' || name === 'calendar';
   $('#resetBtn').hidden = !hasPlan;
   $('#exportBtn').hidden = !hasPlan;
   $('#printBtn').hidden = !hasPlan;
-  $('#calendarBtn').hidden = !hasPlan;
+  $('#calendarLink').hidden = !hasPlan;
 }
 
 /* ------------------------------------------------------------------ */
@@ -127,6 +130,13 @@ function showScreen(name) {
  */
 function applyRoute() {
   if (!state.roadmap) return;
+
+  if (location.hash === '#/calendar') {
+    renderCalendar(state);
+    showScreen('calendar');
+    window.scrollTo(0, 0);
+    return;
+  }
 
   const stepId = currentStepId();
   if (stepId) {
@@ -309,16 +319,6 @@ function initPrintExpand() {
 function initExportImport() {
   $('#exportBtn').addEventListener('click', () => exportPlan(state));
   $('#printBtn').addEventListener('click', () => printPlan());
-
-  $('#calendarBtn').addEventListener('click', () => {
-    const count = exportCalendar(state);
-    if (!count) {
-      showBanner(
-        'В плане нет ни одного шага с проставленной датой, поэтому в календарь нечего добавить. ' +
-          'Укажите дату начала учёбы при создании плана или проставьте сроки вручную кнопкой «Изменить» на карточке шага.'
-      );
-    }
-  });
 
   const fileInput = $('#importFile');
   $('#importBtn').addEventListener('click', () => fileInput.click());
@@ -557,6 +557,23 @@ initTimeline(state, () => persistState());
 initStepView(state, () => {
   persistState();
   renderAll();
+});
+// Календарь двигает те же дедлайны, что и список: после его правок нужно
+// сохранить и пересобрать таймлайн, чтобы порядок и «что делать сейчас»
+// не разошлись с сеткой.
+initCalendar(state, {
+  onChange: () => {
+    persistState();
+    renderAll();
+  },
+  onExportIcs: () => {
+    const count = exportCalendar(state);
+    if (!count) {
+      showBanner(
+        'В плане нет ни одного шага с проставленной датой, поэтому в файл календаря нечего выгружать.'
+      );
+    }
+  },
 });
 initRouter();
 initChat();

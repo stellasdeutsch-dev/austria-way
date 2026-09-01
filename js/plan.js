@@ -40,14 +40,14 @@ const DAY = 86400000;
 
 /** YYYY-MM-DD из локальных компонентов даты — в отличие от toISOString()
  *  не даёт сдвига на день в часовых поясах восточнее UTC. */
-function toLocalISODate(date) {
+export function toLocalISODate(date) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
 }
 
-function addDays(date, n) {
+export function addDays(date, n) {
   const d = new Date(date);
   d.setDate(d.getDate() + n);
   return d;

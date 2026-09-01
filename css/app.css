@@ -879,6 +879,165 @@ ul.sd-list li::before{
   .sd-nav-link.is-next{text-align:left}
 }
 
+
+/* ================================================================ */
+/* Календарь                                                         */
+/* ================================================================ */
+.screen-calendar{max-width:var(--content-max)}
+
+.cal-bar{
+  display:flex;flex-wrap:wrap;align-items:center;gap:12px;
+  margin-bottom:10px;
+}
+.cal-nav{display:flex;align-items:center;gap:6px}
+.cal-arrow{min-width:40px;padding-inline:12px;font-size:16px;line-height:1}
+.cal-title{
+  font-size:clamp(20px,2.6vw,28px);font-weight:700;letter-spacing:-.02em;
+  margin:0;flex:1;
+}
+.cal-hint{font-size:13px;color:var(--ink-500);margin:0 0 16px;max-width:var(--measure)}
+
+/* --- сетка месяца --- */
+.cal-grid{
+  width:100%;border-collapse:separate;border-spacing:0;
+  table-layout:fixed;
+  background:var(--bg);border:1px solid var(--line);
+  border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow-1);
+}
+.cal-grid th{
+  padding:10px 8px;font-size:12px;font-weight:700;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--ink-500);
+  background:var(--bg-alt);border-bottom:1px solid var(--line);
+}
+.cal-cell{
+  vertical-align:top;height:104px;padding:4px;
+  border-right:1px solid var(--line);border-bottom:1px solid var(--line);
+  transition:background-color var(--dur) ease;
+}
+.cal-grid tr td:last-child{border-right:0}
+.cal-grid tr:last-child td{border-bottom:0}
+.cal-cell.is-outside{background:var(--bg-alt)}
+/* --ink-400 в этом проекте помечен как декоративный: на светлой ячейке он
+   даёт 2.79:1. Числа соседних месяцев — обычный видимый текст, поэтому
+   приглушаем их до --ink-500, который проходит AA. */
+.cal-cell.is-outside .cal-daynum{color:var(--ink-500)}
+.cal-cell.is-past{background:#fbfcfe}
+.cal-cell.is-drop{background:var(--brand-050);box-shadow:inset 0 0 0 2px var(--accent-strong)}
+
+.cal-daynum{
+  display:block;width:28px;height:28px;margin-bottom:2px;
+  border:0;background:none;border-radius:50%;cursor:pointer;
+  font-size:13px;font-weight:600;color:var(--ink-600);
+  transition:background-color var(--dur) ease,color var(--dur) ease;
+}
+.cal-daynum:hover{background:var(--bg-sunk);color:var(--ink-900)}
+.cal-cell.is-today .cal-daynum{
+  background:var(--accent-strong);color:#fff;box-shadow:var(--gloss);
+}
+
+.cal-events{display:flex;flex-direction:column;gap:3px}
+
+/* --- событие --- */
+.cal-ev{
+  display:flex;align-items:center;gap:6px;width:100%;
+  padding:3px 7px;border:0;border-radius:7px;cursor:grab;
+  background:var(--cal-tint,var(--bg-sunk));
+  color:var(--cal-ink,var(--ink-700));
+  font-size:12px;font-weight:500;text-align:left;
+  transition:filter var(--dur) ease,opacity var(--dur) ease;
+}
+.cal-ev:hover{filter:brightness(.96)}
+.cal-ev:active{cursor:grabbing}
+.cal-ev.is-dragging{opacity:.4}
+.cal-ev.is-done{opacity:.55}
+.cal-ev.is-done .cal-ev-title{text-decoration:line-through}
+.cal-ev-dot{
+  flex-shrink:0;width:6px;height:6px;border-radius:50%;
+  background:var(--cal-ink,var(--ink-500));
+}
+.cal-ev-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+/* Чип не должен растягиваться под длину заголовка: в списках «этот месяц»
+   и «без даты» он имеет width:auto, и без ограничения длинный шаг
+   («Подтвердить знание немецкого…») выпихивал страницу за экран. */
+.cal-ev{max-width:100%}
+
+/* Цвета фаз — те же, что у маркеров таймлайна и шапок страниц шага. */
+.cal-phase-choose   {--cal-ink:#3730a3;--cal-tint:#eaecff}
+.cal-phase-language {--cal-ink:#8a5300;--cal-tint:#fdf1dd}
+.cal-phase-documents{--cal-ink:#155e63;--cal-tint:#e4f4f6}
+.cal-phase-apply    {--cal-ink:#0f4c81;--cal-tint:#e6f0fa}
+.cal-phase-permit   {--cal-ink:#9b1c1c;--cal-tint:#fce9e9}
+.cal-phase-finance  {--cal-ink:#166534;--cal-tint:#e6f4ec}
+.cal-phase-arrival  {--cal-ink:#6b21a8;--cal-tint:#f5eafd}
+.cal-phase-study    {--cal-ink:#3f3f46;--cal-tint:#eeeef1}
+
+/* --- список месяца --- */
+.cal-agenda{margin-top:28px}
+.cal-agenda h2{
+  font-size:17px;font-weight:700;margin-bottom:12px;
+  padding-bottom:8px;border-bottom:1px solid var(--line);
+}
+.cal-agenda-list{display:flex;flex-direction:column;gap:10px}
+.cal-agenda-list li{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline}
+.cal-agenda-date{
+  flex:0 0 auto;min-width:150px;font-size:13px;font-weight:600;color:var(--ink-600);
+  font-variant-numeric:tabular-nums;
+}
+.cal-agenda-date.is-today{color:var(--accent-deep)}
+.cal-agenda-date.is-past{color:var(--stop-700)}
+.cal-agenda-items{display:flex;flex-wrap:wrap;gap:6px;flex:1}
+.cal-agenda-items .cal-ev{width:auto;font-size:13px;padding:5px 10px}
+.cal-undated{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.cal-undated .cal-ev{width:auto;font-size:13px;padding:5px 10px;cursor:pointer}
+.cal-empty{font-size:14px;color:var(--ink-500)}
+
+/* --- карточка дня --- */
+.cal-pop{
+  position:fixed;right:20px;bottom:20px;z-index:60;width:min(360px,calc(100vw - 40px));
+  background:var(--bg);border:1px solid var(--line-strong);
+  border-radius:var(--radius-lg);box-shadow:var(--shadow-2);padding:16px 18px;
+}
+.cal-pop-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
+.cal-pop-head h3{font-size:15px;font-weight:700}
+.cal-pop-item{
+  padding:12px 0;border-top:1px solid var(--line);
+}
+.cal-pop-item:first-of-type{border-top:0;padding-top:0}
+.cal-pop-title{
+  font-size:14px;font-weight:600;color:var(--ink-900);text-decoration:none;
+  border-bottom:1px solid var(--brand-100);
+}
+.cal-pop-title:hover{color:var(--accent-deep)}
+.cal-pop-phase{font-size:12px;color:var(--cal-ink,var(--ink-500));margin:3px 0 9px;font-weight:600}
+.cal-pop-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cal-pop-field{display:flex;flex-direction:column;gap:4px}
+.cal-pop-field span{font-size:12px;color:var(--ink-500)}
+.cal-pop-field input,.cal-pop-field select{min-height:38px;font-size:13px}
+
+@media (max-width:860px){
+  /* На узком экране в ячейку не помещается ни одна подпись — событие
+     сжимается до цветной точки, а разбор дня уходит в список под сеткой
+     и в карточку дня. */
+  .cal-cell{height:64px;padding:3px}
+  .cal-ev{padding:2px;justify-content:center;border-radius:5px}
+  .cal-ev-title{display:none}
+  .cal-ev-dot{width:7px;height:7px}
+  .cal-events{flex-direction:row;flex-wrap:wrap;gap:2px}
+  .cal-agenda-items .cal-ev{width:auto}
+  .cal-agenda-items .cal-ev .cal-ev-title{display:inline}
+  .cal-undated .cal-ev .cal-ev-title{display:inline}
+  .cal-daynum{width:24px;height:24px;font-size:12px}
+  .cal-agenda-date{min-width:0;flex:1 1 100%}
+  .cal-pop{left:12px;right:12px;bottom:12px;width:auto}
+  .cal-title{flex:1 1 100%;order:-1}
+}
+
+@media print{
+  .cal-bar,.cal-hint,.cal-pop{display:none !important}
+  .cal-grid{box-shadow:none}
+  .cal-cell{height:auto;min-height:70px}
+}
+
 /* ---------------------------------------------------------------- печать */
 /* .tl-why — это <details>: видимость его содержимого управляется атрибутом
    open, а не CSS display, и не переопределяется стилями надёжно во всех
