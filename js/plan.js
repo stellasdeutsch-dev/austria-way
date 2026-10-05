@@ -18,16 +18,27 @@
  */
 
 export const PHASES = [
-  { id: 'choose', label: 'Выбор программы' },
-  { id: 'language', label: 'Немецкий / английский' },
-  { id: 'documents', label: 'Документы и признание' },
-  { id: 'apply', label: 'Подача на Zulassung' },
-  { id: 'permit', label: 'Виза и пребывание' },
-  { id: 'finance', label: 'Деньги и страховка' },
-  { id: 'arrival', label: 'Переезд и жильё' },
-  { id: 'study', label: 'Начало учёбы' },
+  { id: 'choose', label: 'Выбор программы', tone: 'indigo' },
+  { id: 'language', label: 'Немецкий / английский', tone: 'amber' },
+  { id: 'documents', label: 'Документы и признание', tone: 'teal' },
+  { id: 'apply', label: 'Подача на Zulassung', tone: 'blue' },
+  { id: 'permit', label: 'Виза и пребывание', tone: 'red' },
+  { id: 'finance', label: 'Деньги и страховка', tone: 'green' },
+  { id: 'arrival', label: 'Переезд и жильё', tone: 'violet' },
+  { id: 'study', label: 'Начало учёбы', tone: 'slate' },
 ];
 export const PHASE_LABELS = new Map(PHASES.map((p) => [p.id, p.label]));
+
+/**
+ * Цветовой тон фазы. Палитра тонов общая для всех сайтов и живёт в
+ * css/app.css; какой фазе какой тон — решает сайт здесь. Так общий CSS не
+ * знает про конкретные фазы и одинаков у сайтов с разными наборами фаз.
+ * Пользовательский шаг без известной фазы получает нейтральный тон.
+ */
+const PHASE_TONES = new Map(PHASES.map((p) => [p.id, p.tone]));
+export function toneOf(phase) {
+  return PHASE_TONES.get(phase) ?? 'slate';
+}
 const PHASE_ORDER = new Map(PHASES.map((p, i) => [p.id, i]));
 
 export const STATUSES = ['not_started', 'in_progress', 'done'];

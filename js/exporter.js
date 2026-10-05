@@ -8,6 +8,7 @@
  */
 
 import { SCHEMA_VERSION } from './store.js';
+import { SITE } from './site.js';
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -48,13 +49,13 @@ export function exportPlan(state) {
     pendingProposal: state.pendingProposal,
   };
   const name = (state.profile?.program || 'plan').replace(/[^\p{L}\p{N}_-]+/gu, '-').slice(0, 40);
-  downloadText(JSON.stringify(payload, null, 2), `austria-${name}-${todayStamp()}.json`);
+  downloadText(JSON.stringify(payload, null, 2), `${SITE.filePrefix}-${name}-${todayStamp()}.json`);
 }
 
 /** Скачивает сырой, возможно повреждённый, текст из localStorage as-is —
  *  для экрана восстановления, когда автоматический разбор не удался. */
 export function downloadRaw(raw) {
-  downloadText(raw, `austria-raw-${todayStamp()}.json`);
+  downloadText(raw, `${SITE.filePrefix}-raw-${todayStamp()}.json`);
 }
 
 /**
@@ -177,7 +178,7 @@ export function buildICS(roadmap, { reminderDays = 7 } = {}) {
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Austria Way//Admission planner//RU',
+    `PRODID:${SITE.icsProdId}`,
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     `X-WR-CALNAME:${icsEscape(roadmap?.title || 'План поступления')}`,
@@ -194,7 +195,7 @@ export function buildICS(roadmap, { reminderDays = 7 } = {}) {
 
     lines.push(
       'BEGIN:VEVENT',
-      `UID:${step.id}-${icsDate(step.deadline)}@austria-way`,
+      `UID:${step.id}-${icsDate(step.deadline)}@${SITE.icsUidDomain}`,
       `DTSTAMP:${stamp}`,
       `DTSTART;VALUE=DATE:${icsDate(step.deadline)}`,
       `DTEND;VALUE=DATE:${icsDate(shiftISODate(step.deadline, 1))}`,
@@ -230,6 +231,6 @@ export function exportCalendar(state) {
   if (!count) return 0;
 
   const name = (state.profile?.program || 'plan').replace(/[^\p{L}\p{N}_-]+/gu, '-').slice(0, 40);
-  downloadText(buildICS(roadmap), `austria-${name}-${todayStamp()}.ics`, 'text/calendar;charset=utf-8');
+  downloadText(buildICS(roadmap), `${SITE.filePrefix}-${name}-${todayStamp()}.ics`, 'text/calendar;charset=utf-8');
   return count;
 }

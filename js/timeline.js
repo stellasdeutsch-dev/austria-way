@@ -26,6 +26,7 @@ import {
   syncStatusFromChecklist,
   progressOf,
   nextActions,
+  toneOf,
 } from './plan.js';
 
 const STATUS_LABELS = {
@@ -410,7 +411,7 @@ function stepMarkup(step) {
 
   return `
     <li class="tl-item" id="step-${esc(step.id)}" data-status="${step.status}" data-step="${esc(step.id)}"
-        data-phase="${esc(step.phase)}">
+        data-phase="${esc(step.phase)}" data-tone="${toneOf(step.phase)}">
       <span class="tl-marker" aria-hidden="true">
         ${
           step.status === 'done'

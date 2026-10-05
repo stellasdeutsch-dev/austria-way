@@ -13,7 +13,9 @@
 
 import { normalizeChecklist } from './plan.js';
 
-export const STORAGE_KEY = 'austria-way-state';
+import { SITE } from './site.js';
+
+export const STORAGE_KEY = SITE.storageKey;
 export const SCHEMA_VERSION = 2;
 
 /* ------------------------------------------------------------------ */

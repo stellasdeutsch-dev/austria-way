@@ -1,0 +1,9 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "check-core": "scripts/sync-core.sh --check",
+    "sync-core": "scripts/sync-core.sh"
+  }
+}

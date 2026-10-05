@@ -12,7 +12,7 @@
  */
 
 import { $, esc, formatDate } from './utils.js';
-import { STATUSES, syncStatusFromChecklist, daysFromToday, PHASE_LABELS } from './plan.js';
+import { STATUSES, syncStatusFromChecklist, daysFromToday, PHASE_LABELS, toneOf } from './plan.js';
 import { contentFor, iconForPhase } from './content.js';
 
 const STATUS_LABELS = {
@@ -104,7 +104,7 @@ export function renderStepPage(state, stepId) {
       <span class="sd-crumb">Шаг ${step.order} из ${state.roadmap.steps.length} · ${esc(phaseLabel)}</span>
     </nav>
 
-    <header class="sd-hero sd-phase-${esc(step.phase)}">
+    <header class="sd-hero" data-tone="${toneOf(step.phase)}">
       <div class="sd-hero-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
              stroke-linecap="round" stroke-linejoin="round">${iconForPhase(step.phase)}</svg>

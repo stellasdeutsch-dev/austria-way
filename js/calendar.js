@@ -24,6 +24,7 @@ import {
   applyOperations,
   toLocalISODate,
   addDays,
+  toneOf,
 } from './plan.js';
 
 const STATUS_LABELS = {
@@ -95,7 +96,7 @@ function eventChip(step, compact) {
   const done = step.status === 'done';
   return `
     <button type="button"
-            class="cal-ev cal-phase-${esc(step.phase)}${done ? ' is-done' : ''}"
+            class="cal-ev${done ? ' is-done' : ''}" data-tone="${toneOf(step.phase)}"
             draggable="true"
             data-cal="event" data-step="${esc(step.id)}"
             title="${esc(step.title)}">
@@ -222,7 +223,7 @@ function renderDayPopover(state, iso) {
         ? items
             .map(
               (s) => `
-        <div class="cal-pop-item cal-phase-${esc(s.phase)}">
+        <div class="cal-pop-item" data-tone="${toneOf(s.phase)}">
           <a class="cal-pop-title" href="#/step/${esc(s.id)}">${esc(s.title)}</a>
           <p class="cal-pop-phase">${esc(PHASE_LABELS.get(s.phase) ?? s.phase)}</p>
           <div class="cal-pop-row">

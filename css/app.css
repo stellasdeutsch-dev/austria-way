@@ -494,14 +494,19 @@ select{appearance:none;
 /* Цвет фазы — только на маркере и подписи фазы: сами карточки остаются
    нейтральными, иначе список из 11 разноцветных блоков читается хуже,
    а не лучше. */
-.tl-item[data-phase="choose"]     {--phase-ink:#3730a3;--phase-line:#a5b4fc}
-.tl-item[data-phase="language"]   {--phase-ink:#8a5300;--phase-line:#e6c37a}
-.tl-item[data-phase="documents"]  {--phase-ink:#155e63;--phase-line:#8fc7cc}
-.tl-item[data-phase="apply"]      {--phase-ink:#0f4c81;--phase-line:#9dc0de}
-.tl-item[data-phase="permit"]     {--phase-ink:#9b1c1c;--phase-line:#e3a3a3}
-.tl-item[data-phase="finance"]    {--phase-ink:#166534;--phase-line:#93c9a7}
-.tl-item[data-phase="arrival"]    {--phase-ink:#6b21a8;--phase-line:#c9a6e6}
-.tl-item[data-phase="study"]      {--phase-ink:#155e63;--phase-line:#8fc7cc}
+
+/* Тона фаз. Общий CSS знает только тона; какой фазе какой тон, решает
+   plan.js сайта (PHASES[].tone → toneOf). Одно правило задаёт переменные
+   для всех трёх мест, где фаза окрашена: маркер таймлайна, шапка страницы
+   шага и событие в календаре — поэтому они не могут разъехаться. */
+[data-tone="indigo"]{--phase-ink:#3730a3;--phase-line:#a5b4fc;--sd-ink:#3730a3;--sd-line:#c7cffc;--sd-bg:#f2f4ff;--cal-ink:#3730a3;--cal-tint:#eaecff}
+[data-tone="amber"]{--phase-ink:#8a5300;--phase-line:#e6c37a;--sd-ink:#8a5300;--sd-line:#eed6a8;--sd-bg:#fdf7ec;--cal-ink:#8a5300;--cal-tint:#fdf1dd}
+[data-tone="teal"]{--phase-ink:#155e63;--phase-line:#8fc7cc;--sd-ink:#155e63;--sd-line:#b3dade;--sd-bg:#eff8f9;--cal-ink:#155e63;--cal-tint:#e4f4f6}
+[data-tone="blue"]{--phase-ink:#0f4c81;--phase-line:#9dc0de;--sd-ink:#0f4c81;--sd-line:#bcd5e8;--sd-bg:#f1f7fc;--cal-ink:#0f4c81;--cal-tint:#e6f0fa}
+[data-tone="red"]{--phase-ink:#9b1c1c;--phase-line:#e3a3a3;--sd-ink:#9b1c1c;--sd-line:#eec4c4;--sd-bg:#fdf3f3;--cal-ink:#9b1c1c;--cal-tint:#fce9e9}
+[data-tone="green"]{--phase-ink:#166534;--phase-line:#93c9a7;--sd-ink:#166534;--sd-line:#b6dcc3;--sd-bg:#f0f8f3;--cal-ink:#166534;--cal-tint:#e6f4ec}
+[data-tone="violet"]{--phase-ink:#6b21a8;--phase-line:#c9a6e6;--sd-ink:#6b21a8;--sd-line:#dcc4ef;--sd-bg:#faf4fe;--cal-ink:#6b21a8;--cal-tint:#f5eafd}
+[data-tone="slate"]{--phase-ink:#3f3f46;--phase-line:#b4b4bd;--sd-ink:#3f3f46;--sd-line:#d4d4d8;--sd-bg:#f4f4f5;--cal-ink:#3f3f46;--cal-tint:#eeeef1}
 
 .tl-title-link{color:inherit;text-decoration:none}
 .tl-title-link:hover{color:var(--brand-700);text-decoration:underline;text-underline-offset:3px}
@@ -737,14 +742,6 @@ select{appearance:none;
 .sd-hero h1{font-size:clamp(22px,3.4vw,30px);line-height:1.2;margin-bottom:10px}
 .sd-lede{color:var(--ink-700);font-size:16px;max-width:var(--measure)}
 
-.sd-phase-choose   {--sd-ink:#3730a3;--sd-line:#c7cffc;--sd-bg:#f2f4ff}
-.sd-phase-language {--sd-ink:#8a5300;--sd-line:#eed6a8;--sd-bg:#fdf7ec}
-.sd-phase-documents{--sd-ink:#155e63;--sd-line:#b3dade;--sd-bg:#eff8f9}
-.sd-phase-apply    {--sd-ink:#0f4c81;--sd-line:#bcd5e8;--sd-bg:#f1f7fc}
-.sd-phase-permit   {--sd-ink:#9b1c1c;--sd-line:#eec4c4;--sd-bg:#fdf3f3}
-.sd-phase-finance  {--sd-ink:#166534;--sd-line:#b6dcc3;--sd-bg:#f0f8f3}
-.sd-phase-arrival  {--sd-ink:#6b21a8;--sd-line:#dcc4ef;--sd-bg:#faf4fe}
-.sd-phase-study    {--sd-ink:#155e63;--sd-line:#b3dade;--sd-bg:#eff8f9}
 
 /* ---- карточки фактов ---- */
 .sd-facts{
@@ -962,14 +959,6 @@ ul.sd-list li::before{
 .cal-ev{max-width:100%}
 
 /* Цвета фаз — те же, что у маркеров таймлайна и шапок страниц шага. */
-.cal-phase-choose   {--cal-ink:#3730a3;--cal-tint:#eaecff}
-.cal-phase-language {--cal-ink:#8a5300;--cal-tint:#fdf1dd}
-.cal-phase-documents{--cal-ink:#155e63;--cal-tint:#e4f4f6}
-.cal-phase-apply    {--cal-ink:#0f4c81;--cal-tint:#e6f0fa}
-.cal-phase-permit   {--cal-ink:#9b1c1c;--cal-tint:#fce9e9}
-.cal-phase-finance  {--cal-ink:#166534;--cal-tint:#e6f4ec}
-.cal-phase-arrival  {--cal-ink:#6b21a8;--cal-tint:#f5eafd}
-.cal-phase-study    {--cal-ink:#3f3f46;--cal-tint:#eeeef1}
 
 /* --- список месяца --- */
 .cal-agenda{margin-top:28px}
