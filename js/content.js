@@ -14,6 +14,14 @@
  * домены (oead.at, migration.gv.at, oeh.ac.at, oesterreich.gv.at).
  */
 
+/**
+ * Когда официальные ссылки этого сайта последний раз открывались и
+ * отвечали. Обновляется после scripts/check-links.sh; страница шага
+ * показывает дату, через год — предупреждает, а тест падает, напоминая
+ * перепроверить суммы и сроки.
+ */
+export const CONTENT_META = { linksCheckedAt: '2026-10-05' };
+
 export const PHASE_ICONS = {
   choose: '<circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/>',
   language: '<path d="M4 6h11"/><path d="M9 4v2c0 4-2.2 7.4-5 9"/><path d="M7 12c1.4 2.6 3.6 4.4 6 5"/><path d="m13 20 4-9 4 9"/><path d="M14.7 17h4.6"/>',

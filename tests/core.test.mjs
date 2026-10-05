@@ -29,7 +29,8 @@ const { buildICS } = await import('../js/exporter.js');
 const { buildPDF, parseTTF } = await import('../js/pdf.js');
 const { heuristicReply } = await import('../js/assistant.js');
 const store = await import('../js/store.js');
-const { STEP_CONTENT } = await import('../js/content.js');
+const contentModule = await import('../js/content.js');
+const { STEP_CONTENT } = contentModule;
 const { PROFILES, AUTO_DATED, TYPICAL } = await import('./fixtures.mjs');
 
 const build = (p) => plan.normalizeRoadmap(plan.buildRoadmap(p));
@@ -230,4 +231,19 @@ test('старый формат чек-листа (строки) мигриру�
 
   localStorage.setItem(store.STORAGE_KEY, '{не json');
   assert.equal(store.loadState().status, 'corrupt');
+});
+
+/* ------------------------------------------------------------------ */
+/* Свежесть контента                                                   */
+/* ------------------------------------------------------------------ */
+
+test('официальные ссылки сверялись не больше года назад', () => {
+  // Этот тест начинает падать сам, просто от течения времени, — и это его
+  // задача: суммы и сроки устаревают молча. Почините так: запустите
+  // scripts/check-links.sh, сверьте суммы на открывшихся страницах и
+  // обновите CONTENT_META.linksCheckedAt в js/content.js.
+  const iso = contentModule.CONTENT_META?.linksCheckedAt;
+  if (!iso) return; // у сайта без официальных ссылок проверять нечего
+  const days = (Date.now() - new Date(`${iso}T12:00:00`)) / 86400000;
+  assert.ok(days <= 365, `ссылки сверялись ${Math.floor(days)} дн. назад — пора перепроверить`);
 });

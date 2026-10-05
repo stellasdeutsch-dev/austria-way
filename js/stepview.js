@@ -14,6 +14,18 @@
 import { $, esc, formatDate } from './utils.js';
 import { STATUSES, syncStatusFromChecklist, daysFromToday, PHASE_LABELS, toneOf } from './plan.js';
 import { contentFor, iconForPhase } from './content.js';
+// Пространство имён, а не именованный импорт: CONTENT_META есть не у
+// каждого сайта, и отсутствующий именованный экспорт уронил бы модуль
+// целиком ещё на этапе загрузки.
+import * as contentModule from './content.js';
+
+/** Сколько полных дней прошло с даты сверки ссылок; null — даты нет. */
+function daysSinceCheck() {
+  const iso = contentModule.CONTENT_META?.linksCheckedAt;
+  if (!iso) return null;
+  const d = new Date(`${iso}T12:00:00`);
+  return Number.isNaN(d.getTime()) ? null : Math.floor((Date.now() - d) / 86400000);
+}
 
 const STATUS_LABELS = {
   not_started: 'Не начато',
@@ -66,6 +78,21 @@ function sectionMarkup(section) {
       <h2>${esc(section.title)}</h2>
       <${tag} class="sd-list">${items}</${tag}>
     </section>`;
+}
+
+/**
+ * Подпись о свежести ссылок. Через год без перепроверки подпись становится
+ * предупреждением: контент устаревает молча, и лучше сказать об этом
+ * читателю, чем делать вид, что суммы прошлого года всё ещё верны.
+ */
+function checkedNote() {
+  const days = daysSinceCheck();
+  if (days === null) return '';
+  const date = formatDate(contentModule.CONTENT_META.linksCheckedAt);
+  return days > 365
+    ? `<p class="sd-stale">Ссылки и ориентиры сверялись ${esc(date)} — больше года назад. Суммы и сроки
+         почти наверняка изменились: опирайтесь только на официальные страницы.</p>`
+    : `<p class="sd-checked">Ссылки проверены: ${esc(date)}</p>`;
 }
 
 /** Отрисовывает страницу шага. Возвращает false, если шага нет. */
@@ -194,6 +221,7 @@ export function renderStepPage(state, stepId) {
              <h2>Проверить в первоисточнике</h2>
              <p class="sd-muted">Инструмент работает офлайн и ничего не сверяет сам. Суммы и сроки
                меняются ежегодно — открывайте официальную страницу:</p>
+             ${checkedNote()}
              <ul class="sd-links">${content.links
                .map(
                  (l) =>

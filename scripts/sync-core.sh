@@ -22,7 +22,7 @@ CORE=(
   css/app.css
   fonts/inter-cyrillic.woff2 fonts/inter-latin.woff2 fonts/inter-latin-ext.woff2
   fonts/pdf-regular.ttf fonts/pdf-semibold.ttf
-  tests/core.test.mjs package.json scripts/sync-core.sh
+  tests/core.test.mjs package.json scripts/sync-core.sh scripts/check-links.sh
 )
 
 # Каноническая копия ядра — austria-way. Скрипт попадает в сайты-сёстры

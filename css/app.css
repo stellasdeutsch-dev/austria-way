@@ -826,6 +826,13 @@ ul.sd-list li::before{
 .sd-rel-status.is-done{background:var(--ok-050);color:var(--ok-700)}
 .sd-rel-status.is-in_progress{background:var(--brand-050);color:var(--brand-700)}
 
+/* Внутри .sd-section абзацы красятся правилом «.sd-section p» — у него выше
+   специфичность, поэтому подписи о свежести адресуем через секцию. */
+.sd-section .sd-checked{font-size:13px;color:var(--ink-500);margin:6px 0 0}
+.sd-section .sd-stale{
+  font-size:13px;color:var(--warn-700);background:var(--warn-050);
+  border-radius:var(--r-sm);padding:9px 12px;margin:8px 0 0;
+}
 .sd-muted{color:var(--ink-500);font-size:14px}
 
 /* Ссылки на первоисточники. Внешние — единственные ссылки наружу во всём
