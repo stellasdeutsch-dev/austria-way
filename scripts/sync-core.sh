@@ -25,6 +25,14 @@ CORE=(
   tests/core.test.mjs package.json scripts/sync-core.sh
 )
 
+# Каноническая копия ядра — austria-way. Скрипт попадает в сайты-сёстры
+# вместе с ядром, и запущенный там сравнил бы сайт сам с собой — то есть
+# всегда говорил бы «совпадает». Такая проверка хуже отсутствующей.
+if [ "$(basename "$HERE")" != "austria-way" ] && [ -z "${SYNC_SOURCE_OK:-}" ]; then
+  echo "запускайте из канонического репозитория: ../austria-way/scripts/sync-core.sh ${1:-}" >&2
+  exit 2
+fi
+
 mode="${1:-sync}"
 drift=0
 for target in "${TARGETS[@]}"; do
