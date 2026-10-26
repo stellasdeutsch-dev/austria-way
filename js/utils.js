@@ -25,3 +25,28 @@ export function daysUntil(isoDate) {
   today.setHours(0, 0, 0, 0);
   return Math.round((target - today) / 86400000);
 }
+
+/**
+ * Сколько дней нужно до начала учёбы, чтобы план, построенный по
+ * автоматически выбранной дате, не начинался с просроченных шагов. Самый
+ * ранний шаг в обоих планах стоит примерно за 236 дней до старта; тест
+ * «план с датой, выбранной самим инструментом» следит, чтобы этого хватало.
+ * Раньше то же правило жило в трёх местах с тремя числами: 240, 250 и 420.
+ */
+export const RUNWAY_DAYS = 250;
+
+/** Ближайшее 1-е число месяца monthIndex (0–11), до которого есть RUNWAY_DAYS. */
+export function nextStartWithRunway(monthIndex, now = new Date()) {
+  let year = now.getFullYear();
+  let d = new Date(year, monthIndex, 1, 12);
+  while ((d - now) / 86400000 < RUNWAY_DAYS) {
+    year += 1;
+    d = new Date(year, monthIndex, 1, 12);
+  }
+  return d;
+}
+
+/** Date → "ГГГГ-ММ" (значение для поля месяца), по местному календарю. */
+export function toMonthValue(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}

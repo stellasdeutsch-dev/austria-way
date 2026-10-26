@@ -26,6 +26,7 @@ import {
   addDays,
   toneOf,
 } from './plan.js';
+import { setStepStatus, markDeadlineEdit } from './steps.js';
 
 const STATUS_LABELS = {
   not_started: 'Не начато',
@@ -42,7 +43,30 @@ const MONTHS = [
 /** Какой месяц сейчас открыт и какой день раскрыт. Эфемерно, не в localStorage. */
 export function createCalendarUiState() {
   const now = new Date();
-  return { year: now.getFullYear(), month: now.getMonth(), openDay: null };
+  // touched — человек сам листал месяцы; тогда не перескакиваем за него.
+  return { year: now.getFullYear(), month: now.getMonth(), openDay: null, touched: false };
+}
+
+/** Ближайший срок незавершённого шага — сегодня или позже; иначе последний просроченный. */
+function nextDeadline(roadmap) {
+  const today = toLocalISODate(new Date());
+  const open = (roadmap?.steps ?? []).filter((s) => s.deadline && s.status !== 'done').map((s) => s.deadline).sort();
+  return open.find((d) => d >= today) ?? open[open.length - 1] ?? null;
+}
+
+/**
+ * Поставить календарь на месяц ближайшего срока. Раньше он всегда
+ * открывался на текущем месяце, а сроки плана обычно на месяцы вперёд —
+ * первым видом были 42 пустые клетки и непонятно, куда листать.
+ */
+export function positionOnNextDeadline(state) {
+  const iso = nextDeadline(state.roadmap);
+  if (!iso) return false;
+  const [y, m] = iso.split('-').map(Number);
+  state.calendarUi.year = y;
+  state.calendarUi.month = m - 1;
+  state.calendarUi.openDay = null;
+  return true;
 }
 
 /* ------------------------------------------------------------------ */
@@ -154,6 +178,7 @@ export function renderCalendar(state) {
         <button type="button" class="btn btn-ghost btn-sm cal-arrow" data-cal="prev" aria-label="Предыдущий месяц">←</button>
         <button type="button" class="btn btn-outline btn-sm" data-cal="today">Сегодня</button>
         <button type="button" class="btn btn-ghost btn-sm cal-arrow" data-cal="next" aria-label="Следующий месяц">→</button>
+        ${nextDeadline(state.roadmap) ? '<button type="button" class="btn btn-ghost btn-sm" data-cal="nextdeadline">Ближайший срок</button>' : ''}
       </div>
       <h1 class="cal-title" aria-live="polite">${MONTHS[month]} ${year}</h1>
       <button type="button" class="btn btn-outline btn-sm" data-cal="ics">Скачать .ics</button>
@@ -257,15 +282,15 @@ function moveDeadline(state, stepId, iso) {
   const step = state.roadmap?.steps.find((s) => s.id === stepId);
   if (!step || step.deadline === iso) return false;
   const { roadmap } = applyOperations(state.roadmap, [{ op: 'update_step', stepId, deadline: iso }]);
+  // Перенесённый вручную срок — решение человека: «Изменить ответы» его не пересчитает.
+  markDeadlineEdit(roadmap.steps.find((s) => s.id === stepId));
   state.roadmap = roadmap;
   return true;
 }
 
 function setStatus(state, stepId, value) {
-  if (!STATUSES.includes(value)) return false;
   const step = state.roadmap?.steps.find((s) => s.id === stepId);
-  if (!step) return false;
-  step.status = value;
+  if (!setStepStatus(step, value)) return false;
   state.roadmap.updatedAt = new Date().toISOString();
   return true;
 }
@@ -283,7 +308,12 @@ export function initCalendar(state, { onChange, onExportIcs }) {
     const kind = el.dataset.cal;
     const ui = state.calendarUi;
 
-    if (kind === 'prev' || kind === 'next') {
+    if (kind === 'prev' || kind === 'next' || kind === 'today') ui.touched = true;
+    if (kind === 'nextdeadline') {
+      positionOnNextDeadline(state);
+      ui.touched = true;
+      renderCalendar(state);
+    } else if (kind === 'prev' || kind === 'next') {
       const delta = kind === 'next' ? 1 : -1;
       const d = new Date(ui.year, ui.month + delta, 1, 12);
       ui.year = d.getFullYear();

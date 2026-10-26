@@ -21,13 +21,12 @@ import { iconForPhase } from './content.js';
 import {
   PHASE_LABELS,
   PHASES,
-  STATUSES,
   applyOperations,
   syncStatusFromChecklist,
-  progressOf,
   nextActions,
   toneOf,
 } from './plan.js';
+import { progressOf, setStepStatus, markUserEdit, rememberRemoved } from './steps.js';
 
 const STATUS_LABELS = {
   not_started: 'Не начато',
@@ -106,6 +105,8 @@ export function initTimeline(state, onChange) {
       if (!step) return;
       if (!confirm(`Удалить шаг «${step.title}»? Отменить можно только вручную, повторно его добавив.`)) return;
       const { roadmap } = applyOperations(state.roadmap, [{ op: 'remove_step', stepId: step.id }]);
+      // Запомнить удаление: «Изменить ответы» не должно вернуть шаг обратно.
+      if (!step.custom) rememberRemoved(roadmap, step.id);
       state.roadmap = roadmap;
       state.ui.editingStepId = null;
       refreshRoadmap(state);
@@ -150,10 +151,8 @@ export function refreshRoadmap(state) {
 /* ------------------------------------------------------------------ */
 
 function setStatus(state, stepId, status) {
-  if (!STATUSES.includes(status)) return;
   const step = state.roadmap.steps.find((s) => s.id === stepId);
-  if (!step) return;
-  step.status = status;
+  if (!setStepStatus(step, status)) return;
   state.roadmap.updatedAt = new Date().toISOString();
 }
 
@@ -173,6 +172,8 @@ function saveStepEdit(state, form) {
     .map((s) => s.trim())
     .filter(Boolean);
   const title = String(data.get('title') || '').trim();
+  const before = state.roadmap.steps.find((s) => s.id === stepId);
+  const deadline = String(data.get('deadline') || '');
 
   const { roadmap } = applyOperations(state.roadmap, [
     {
@@ -180,10 +181,12 @@ function saveStepEdit(state, form) {
       stepId,
       ...(title ? { title } : {}),
       description: String(data.get('description') || '').trim(),
-      deadline: String(data.get('deadline') || ''),
+      deadline,
       checklist,
     },
   ]);
+  // Шаг, который человек переписал сам, «Изменить ответы» оставит как есть.
+  markUserEdit(roadmap.steps.find((s) => s.id === stepId), { deadlineChanged: deadline !== (before?.deadline ?? '') });
   state.roadmap = roadmap;
   state.ui.editingStepId = null;
 }
@@ -216,16 +219,34 @@ function saveNewStep(state, form) {
 /* Рендер                                                              */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Шапка плана — самое заметное место страницы. Раньше в ней стояли восемь
+ * строк о том, что план шаблонный; теперь — то, что двигает человека:
+ * следующий шаг со сроком и прогресс. Описание плана свёрнуто в «Как
+ * собран этот план». План без единой даты получает здесь кнопку «Указать,
+ * когда начинается учёба» — раньше он лишь советовал это сделать, а сделать
+ * было негде.
+ */
 export function renderRoadmapHeader(state) {
   const { roadmap } = state;
   $('#roadmapTitle').textContent = roadmap.title;
   $('#roadmapSummary').textContent = roadmap.summary;
 
   const conf = $('#confidence');
-  conf.className = `confidence ${roadmap.confidence}`;
-  conf.textContent = 'Шаблон — не привязан к конкретному вузу';
+  if (conf) {
+    conf.className = 'confidence';
+    conf.textContent = 'Шаблон — сверяйте сроки с вузом';
+  }
 
-  $('#chatContext').textContent = `Знает ваш профиль и все ${roadmap.steps.length} шагов плана`;
+  const context = $('#chatContext');
+  if (context) context.textContent = `Знает ${roadmap.steps.length} шагов вашего плана`;
+
+  const next = $('#roadmapNext');
+  if (next) next.innerHTML = nextLine(roadmap);
+
+  const hasDates = roadmap.steps.some((s) => s.deadline);
+  const cta = $('#setDateBtn');
+  if (cta) cta.hidden = hasDates;
 
   const notesPanel = $('#notesPanel');
   if (roadmap.notes) {
@@ -240,6 +261,28 @@ export function renderProgress(state) {
   const p = progressOf(state.roadmap);
   $('#progressFill').style.width = `${p.percent}%`;
   $('#progressLabel').textContent = `${p.done} из ${p.total} готово`;
+}
+
+function nextLine(roadmap) {
+  const a = nextActions(roadmap);
+  if (a.allDone) return '<span class="rh-label">Все шаги выполнены.</span>';
+  const pick = a.overdue[0] ?? a.soon[0] ?? a.upcoming[0];
+  if (pick) {
+    const d = pick.days;
+    const when = d < 0
+      ? `просрочено на ${-d} ${plural(-d, 'день', 'дня', 'дней')}`
+      : d === 0 ? 'сегодня' : `через ${d} ${plural(d, 'день', 'дня', 'дней')}`;
+    return `<span class="rh-label">Следующий шаг</span>
+      <a class="rh-step" href="#/step/${esc(pick.step.id)}">${esc(pick.step.title)}</a>
+      <span class="rh-when${d < 0 ? ' is-overdue' : ''}">${esc(formatDate(pick.step.deadline))} · ${when}</span>`;
+  }
+  const undated = a.undated[0];
+  if (undated) {
+    return `<span class="rh-label">Следующий шаг</span>
+      <a class="rh-step" href="#/step/${esc(undated.id)}">${esc(undated.title)}</a>
+      <span class="rh-when">срок нужно выяснить</span>`;
+  }
+  return '';
 }
 
 /** Склонение существительного после числа: 1 день / 2 дня / 5 дней. */
@@ -374,7 +417,7 @@ export function renderTimeline(state) {
         let head = '';
         if (step.phase !== lastPhase) {
           lastPhase = step.phase;
-          head = `<li class="tl-phase" role="presentation">${esc(PHASE_LABELS.get(step.phase) ?? step.phase)}</li>`;
+          head = `<li class="tl-phase">${esc(PHASE_LABELS.get(step.phase) ?? step.phase)}</li>`;
         }
         const markup = step.id === state.ui.editingStepId ? stepEditMarkup(step) : stepMarkup(step);
         return head + markup;

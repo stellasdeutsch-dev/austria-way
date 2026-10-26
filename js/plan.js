@@ -17,11 +17,13 @@
  * содержании каждого шага стоит ссылка на первоисточник для проверки.
  */
 
+import { nextStartWithRunway } from './utils.js';
+
 export const PHASES = [
   { id: 'choose', label: 'Выбор программы', tone: 'indigo' },
-  { id: 'language', label: 'Немецкий / английский', tone: 'amber' },
+  { id: 'language', label: 'Язык', tone: 'amber' },
   { id: 'documents', label: 'Документы и признание', tone: 'teal' },
-  { id: 'apply', label: 'Подача на Zulassung', tone: 'blue' },
+  { id: 'apply', label: 'Заявление в вуз', tone: 'blue' },
   { id: 'permit', label: 'Виза и пребывание', tone: 'red' },
   { id: 'finance', label: 'Деньги и страховка', tone: 'green' },
   { id: 'arrival', label: 'Переезд и жильё', tone: 'violet' },
@@ -164,21 +166,15 @@ export function semesterStart(semesterId, yearHint) {
   const parsed = Number(yearHint);
   const usable = Number.isFinite(parsed) && parsed >= 2000 && parsed <= 2100;
 
-  let year = usable ? Math.trunc(parsed) : today.getFullYear();
+  const year = usable ? Math.trunc(parsed) : today.getFullYear();
   let d = new Date(year, spec.month, 1, 12);
 
   // Если год не задан, мало выбрать просто будущий семестр: самый ранний шаг
-  // плана считается почти за восемь месяцев до старта, и ближайший семестр
-  // открывался бы сплошной красной простынёй «просрочено» — как будто
-  // опоздал ещё до начала. Берём первый, до которого хватает разбега.
-  // Явно указанный год не трогаем: человек вправе смотреть и на прошлый.
-  const MIN_RUNWAY_DAYS = 250;
-  if (!usable) {
-    while ((d - today) / 86400000 < MIN_RUNWAY_DAYS) {
-      year += 1;
-      d = new Date(year, spec.month, 1, 12);
-    }
-  }
+  // плана стоит почти за восемь месяцев до старта, и ближайший семестр
+  // открывался бы сплошной красной простынёй «просрочено». Берём первый, до
+  // которого хватает разбега (общее правило в utils.js). Явно указанный год
+  // не трогаем: человек вправе смотреть и на прошлый.
+  if (!usable) d = nextStartWithRunway(spec.month, today);
   return d;
 }
 
@@ -284,7 +280,7 @@ export function buildRoadmap(profile) {
       steps.push({
         id: 'vorstudienlehrgang',
         phase: 'language',
-        title: 'Запасной вариант: Vorstudienlehrgang, если уровня не хватает',
+        title: 'Запасной вариант: подготовительный курс (Vorstudienlehrgang), если уровня не хватает',
         description:
           'Если языка не хватает, вуз может выдать условный допуск с обязательством сдать Ergänzungsprüfung, ' +
           'а подготовку к ней дают курсы Vorstudienlehrgang (VWU в Вене и Граце).',
@@ -426,7 +422,7 @@ export function buildRoadmap(profile) {
     steps.push({
       id: 'residence-permit',
       phase: 'permit',
-      title: 'Подать на Aufenthaltsbewilligung — Studierende',
+      title: 'Подать на вид на жительство студента (Aufenthaltsbewilligung)',
       description:
         'Заявление подаётся ЛИЧНО в австрийском представительстве в вашей стране, ДО въезда в Австрию. ' +
         'Рассмотрение занимает до трёх месяцев, иногда дольше.',
@@ -449,7 +445,7 @@ export function buildRoadmap(profile) {
     steps.push({
       id: 'collect-card',
       phase: 'permit',
-      title: 'Забрать карту Aufenthaltstitel после приезда',
+      title: 'Забрать карту вида на жительство после приезда',
       description:
         'После положительного решения въезжаете по въездной визе D и получаете пластиковую карту вида на ' +
         'жительство в ведомстве по месту жительства.',
@@ -465,7 +461,7 @@ export function buildRoadmap(profile) {
     steps.push({
       id: 'anmeldebescheinigung',
       phase: 'permit',
-      title: 'Оформить Anmeldebescheinigung в первые 4 месяца',
+      title: 'Оформить подтверждение регистрации для граждан ЕС (Anmeldebescheinigung) в первые 4 месяца',
       description:
         'Гражданам ЕС/ЕЭЗ и Швейцарии виза не нужна: въезжаете свободно, а в течение четырёх месяцев после ' +
         'въезда оформляете свидетельство о регистрации проживания.',
@@ -508,7 +504,7 @@ export function buildRoadmap(profile) {
   steps.push({
     id: 'fees',
     phase: 'finance',
-    title: isEU ? 'Оплатить взнос ÖH' : 'Оплатить Studienbeitrag и взнос ÖH',
+    title: isEU ? 'Оплатить взнос студсоюза (ÖH)' : 'Оплатить обучение и взнос студсоюза (Studienbeitrag и ÖH)',
     description: isEU
       ? 'Граждане ЕС/ЕЭЗ в пределах нормативного срока обучения платят только взнос студенческого союза ÖH ' +
         'за семестр. Плата за обучение появляется, если срок обучения превышен.'
@@ -564,7 +560,7 @@ export function buildRoadmap(profile) {
   steps.push({
     id: 'inskription',
     phase: 'study',
-    title: 'Пройти инскрипцию и записаться на курсы',
+    title: 'Зачислиться в вуз и записаться на курсы',
     description:
       'Завершите зачисление в Studienabteilung, получите студенческий аккаунт и запишитесь на курсы — у популярных ' +
       'мест ограничено и запись открывается по расписанию.',
@@ -643,34 +639,6 @@ export function normalizeRoadmap(roadmap, previous = null) {
     contacts: roadmap.contacts ?? [],
     notes: roadmap.notes ?? '',
     updatedAt: new Date().toISOString(),
-  };
-}
-
-/** total/done — целыми шагами (для подписи «N из M готово»).
- *  percent — по пунктам чек-листа (шаг без чек-листа считается за 1 пункт),
- *  поэтому частично отмеченный чек-лист двигает прогресс-бар, а не ждёт
- *  полного закрытия шага. */
-export function progressOf(roadmap) {
-  const steps = roadmap?.steps ?? [];
-  const doneSteps = steps.filter((s) => s.status === 'done').length;
-
-  let totalUnits = 0;
-  let doneUnits = 0;
-  for (const s of steps) {
-    const items = s.checklist ?? [];
-    if (items.length) {
-      totalUnits += items.length;
-      doneUnits += items.filter((i) => i.done).length;
-    } else {
-      totalUnits += 1;
-      doneUnits += s.status === 'done' ? 1 : 0;
-    }
-  }
-
-  return {
-    total: steps.length,
-    done: doneSteps,
-    percent: totalUnits ? Math.round((doneUnits / totalUnits) * 100) : 0,
   };
 }
 
@@ -779,4 +747,26 @@ export function applyOperations(roadmap, operations) {
 
 export function isValidStatus(status) {
   return STATUSES.includes(status);
+}
+
+/**
+ * Анкета для кнопки «Посмотреть пример». Год пустой — как у человека,
+ * который его не указал: пример показывает ровно то, что получит он. Раньше
+ * пример брал семестр через 420+ дней и внушал «первый шаг через 470 дней»,
+ * хотя ближайший семестр ещё реален.
+ */
+export function sampleProfile() {
+  return {
+    citizenshipGroup: 'third',
+    name: 'Аружан',
+    citizenship: 'Казахстан',
+    university: 'Universität Wien',
+    program: 'MSc Informatik',
+    degreeLevel: 'master',
+    programLanguage: 'de',
+    semester: 'ws',
+    intakeYear: '',
+    languageReady: 'no',
+    notes: 'Нужно общежитие, загранпаспорт истекает в мае.',
+  };
 }

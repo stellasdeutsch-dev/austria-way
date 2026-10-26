@@ -255,7 +255,7 @@ button,input,select,textarea{font:inherit;color:inherit}
   display:inline-flex;align-items:center;gap:6px;
   padding:6px 13px;border-radius:var(--r-pill);
   background:rgba(255,255,255,.09);color:rgba(255,255,255,.82);
-  font-size:12.5px;font-weight:500;
+  font-size:12px;font-weight:500;
 }
 
 /* ---------------------------------------------------------------- анкета */
@@ -374,42 +374,11 @@ select{appearance:none;
 }
 
 /* ---------------------------------------------------------------- загрузка */
-.loading{max-width:520px;margin:80px auto;text-align:left}
-.steps-progress{display:flex;flex-direction:column;gap:18px}
-.steps-progress li{
-  display:flex;align-items:center;gap:13px;
-  color:var(--ink-400);font-size:15px;transition:color var(--dur) ease;
-}
-.steps-progress .dot{
-  width:11px;height:11px;border-radius:50%;flex-shrink:0;
-  background:var(--line-strong);transition:background-color var(--dur) ease;
-}
-.steps-progress li.is-active{color:var(--ink-900);font-weight:600}
-.steps-progress li.is-active .dot{
-  background:var(--brand);
-  box-shadow:0 0 0 0 color-mix(in srgb, var(--brand) 55%, transparent);
-  animation:pulse 1.6s ease-out infinite;
-}
-.steps-progress li.is-done{color:var(--ink-600)}
-.steps-progress li.is-done .dot{background:var(--ok-700)}
-@keyframes pulse{
-  70%{box-shadow:0 0 0 9px transparent}
-  100%{box-shadow:0 0 0 0 transparent}
-}
-.loading-note{margin-top:26px;font-size:13px;color:var(--ink-500)}
 
-/* ---------------------------------------------------------------- рабочая область */
-.workspace{
-  display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:24px;align-items:start;
-}
-/* min-width:0 обязателен: по умолчанию grid-элемент не сжимается меньше
-   своего содержимого, и длинный неразрывный текст растягивает колонку
-   за пределы вьюпорта */
-.workspace > *{min-width:0}
-@media (max-width:1080px){
-  .workspace{grid-template-columns:minmax(0,1fr)}
-}
-
+/* ---------------------------------------------------------------- план
+   Одна колонка: чат больше не занимает постоянную треть экрана, а
+   выезжает по кнопке. */
+#screenRoadmap .roadmap-col{max-width:860px;margin-inline:auto}
 .roadmap-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;margin-bottom:18px}
 .roadmap-head:not(.card-dark) h1{font-size:24px;margin-bottom:8px}
 .summary{color:var(--ink-500);max-width:var(--measure)}
@@ -453,11 +422,21 @@ select{appearance:none;
    строк. Отдельная, более сдержанная шкала. */
 .roadmap-head.card-dark{
   margin-bottom:20px;padding:26px 24px;border-radius:var(--r-lg);
-  display:flex;justify-content:space-between;align-items:flex-start;gap:16px;
+  display:block;
 }
+.roadmap-next{margin-top:14px;font-size:15px;color:var(--on-navy) !important;max-width:var(--measure)}
+.roadmap-next a{color:inherit;font-weight:600;text-underline-offset:3px}
+.roadmap-next .muted{color:var(--on-navy-muted)}
+.roadmap-head .progress{margin:16px 0 0}
+.roadmap-head .progress-bar{background:rgba(255,255,255,.14)}
+.roadmap-head .progress-label{color:var(--on-navy-muted)}
+.roadmap-head #setDateBtn{margin-top:16px}
+.how-built{margin-top:16px;font-size:13px;color:var(--on-navy-muted)}
+.how-built summary{cursor:pointer;color:var(--on-navy);font-weight:500;min-height:32px;display:inline-flex;align-items:center}
+.how-built p{margin-top:8px;max-width:var(--measure);font-size:13px}
 .roadmap-head.card-dark h1{font-size:clamp(20px,2.2vw,26px);margin-bottom:8px}
 .roadmap-head.card-dark .summary{color:var(--on-navy-muted);max-width:var(--measure)}
-.roadmap-head.card-dark .confidence{
+.roadmap-head.card-dark .confidence-old{
   background:rgba(255,255,255,.10);color:rgba(255,255,255,.85);
   border:1px solid rgba(255,255,255,.16);
 }
@@ -518,7 +497,8 @@ select{appearance:none;
   transition:border-color var(--dur) ease,box-shadow var(--dur) ease,opacity var(--dur) ease;
 }
 .tl-card:hover{border-color:var(--line-strong);box-shadow:var(--shadow-2)}
-.tl-item[data-status="done"] .tl-card{opacity:.62}
+.tl-item[data-status="done"] .tl-card{opacity:.62;padding-block:12px}
+.tl-item[data-status="done"] :is(.tl-desc,.tl-check,.tl-why){display:none}
 .tl-item[data-status="done"] .tl-title{text-decoration:line-through;text-decoration-color:var(--ink-400)}
 
 .tl-top{display:flex;align-items:flex-start;gap:12px}
@@ -538,7 +518,7 @@ select{appearance:none;
 .tag.verified{background:var(--ok-050);color:var(--ok-700)}
 
 .tl-check{margin-top:13px;display:flex;flex-direction:column;gap:7px}
-.tl-check li{display:flex;gap:9px;font-size:13.5px;color:var(--ink-600)}
+.tl-check li{display:flex;gap:9px;font-size:13px;color:var(--ink-600)}
 .tl-check li::before{content:"";flex-shrink:0;width:5px;height:5px;border-radius:50%;background:var(--line-strong);margin-top:8px}
 
 .tl-why{margin-top:13px}
@@ -549,14 +529,14 @@ select{appearance:none;
 .tl-why summary::-webkit-details-marker{display:none}
 .tl-why summary::before{content:"▸";transition:transform var(--dur) ease;display:inline-block}
 .tl-why[open] summary::before{transform:rotate(90deg)}
-.tl-why p{margin-top:7px;font-size:13.5px;color:var(--ink-600);max-width:var(--measure)}
+.tl-why p{margin-top:7px;font-size:13px;color:var(--ink-600);max-width:var(--measure)}
 .tl-why a{color:var(--brand);text-underline-offset:2px}
 
 .status-select{
   /* width:auto обязателен: глобальное правило для select задаёт 100%,
      из-за чего селект вытесняет заголовок шага в узкую колонку */
   width:auto;flex:0 0 auto;
-  min-height:32px;padding:0 26px 0 10px;font-size:12.5px;
+  min-height:32px;padding:0 26px 0 10px;font-size:12px;
   border-radius:8px;border:1px solid var(--line-strong);background-color:var(--bg);
   background-position:right 8px center;cursor:pointer;
 }
@@ -573,19 +553,30 @@ select{appearance:none;
 .panel a{color:var(--brand);text-underline-offset:2px;word-break:break-word}
 
 /* ---------------------------------------------------------------- чат */
-.chat-col{
-  position:sticky;top:calc(var(--topbar-h) + 24px);
-  display:flex;flex-direction:column;
-  height:calc(100vh - var(--topbar-h) - 52px);
-  background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-lg);
-  overflow:hidden;box-shadow:var(--shadow-1);
+.chat-toggle{
+  position:fixed;right:20px;bottom:20px;z-index:60;
+  display:inline-flex;align-items:center;gap:8px;
+  min-height:48px;padding:0 20px;border:0;border-radius:999px;
+  background:var(--accent-grad);color:var(--on-brand);
+  font-size:14px;font-weight:600;cursor:pointer;
+  box-shadow:0 10px 26px rgba(47,123,255,.35),var(--gloss);
 }
-@media (max-width:1080px){
-  .chat-col{position:static;height:auto;max-height:640px}
+body.chat-open .chat-toggle{display:none}
+.chat-drawer{
+  position:fixed;z-index:70;top:calc(var(--topbar-h) + 12px);right:12px;bottom:12px;
+  width:min(400px,calc(100vw - 24px));
+  display:flex;flex-direction:column;
+  background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-lg);
+  overflow:hidden;box-shadow:0 24px 60px rgba(11,18,32,.22);
+}
+@media (max-width:640px){
+  .chat-drawer{top:auto;left:0;right:0;bottom:0;width:auto;height:85vh;height:85dvh;border-radius:18px 18px 0 0}
+  .chat-toggle{right:16px;bottom:16px}
 }
 
-.chat-head{padding:15px 18px;border-bottom:1px solid var(--line)}
-.chat-head p{margin-top:3px;font-size:12.5px;color:var(--ink-500)}
+.chat-head{padding:12px 12px 12px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.chat-head .btn{font-size:20px;padding-inline:12px;min-height:40px}
+.chat-head p{margin-top:3px;font-size:12px;color:var(--ink-500)}
 
 .chat-log{flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:12px}
 
@@ -597,14 +588,14 @@ select{appearance:none;
 .msg-ai{align-self:flex-start;color:var(--ink-700);white-space:pre-wrap}
 .msg-system{
   align-self:center;max-width:100%;text-align:center;
-  font-size:12.5px;color:var(--ok-700);background:var(--ok-050);
+  font-size:12px;color:var(--ok-700);background:var(--ok-050);
   padding:6px 12px;border-radius:999px;
 }
 .msg-error{
   align-self:flex-start;font-size:13px;color:var(--stop-700);
   background:var(--stop-050);padding:9px 13px;border-radius:10px;
 }
-.msg-empty{color:var(--ink-500);font-size:13.5px;align-self:flex-start;max-width:100%}
+.msg-empty{color:var(--ink-500);font-size:13px;align-self:flex-start;max-width:100%}
 
 .typing{display:inline-flex;gap:4px;padding:6px 2px}
 .typing span{
@@ -621,10 +612,10 @@ select{appearance:none;
   border:1px solid var(--brand);border-radius:var(--radius);
   background:var(--brand-050);padding:14px;
 }
-.proposal h3{font-size:13.5px;font-weight:700;color:var(--brand-700);margin-bottom:7px}
+.proposal h3{font-size:13px;font-weight:700;color:var(--brand-700);margin-bottom:7px}
 .proposal p{font-size:13px;color:var(--ink-600);margin-bottom:10px}
 .proposal ul{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
-.proposal li{font-size:12.5px;color:var(--ink-600);display:flex;gap:7px}
+.proposal li{font-size:12px;color:var(--ink-600);display:flex;gap:7px}
 .proposal li::before{content:"→";color:var(--brand);flex-shrink:0}
 .proposal-actions{display:flex;gap:8px}
 
@@ -646,7 +637,7 @@ select{appearance:none;
 .global-banner{
   display:flex;align-items:flex-start;gap:12px;
   padding:11px 20px;background:var(--warn-050);color:var(--warn-700);
-  border-bottom:1px solid var(--line);font-size:13.5px;
+  border-bottom:1px solid var(--line);font-size:13px;
 }
 .global-banner p{flex:1;margin:0;max-width:var(--measure)}
 .banner-close{
@@ -656,8 +647,8 @@ select{appearance:none;
 .banner-close:hover{background:rgba(0,0,0,.06)}
 
 /* ---------------------------------------------------------------- чек-лист: интерактивные пункты */
-.check-item{display:flex;align-items:flex-start;gap:9px;cursor:pointer;font-size:13.5px;color:var(--ink-600)}
-.check-item input{accent-color:var(--brand);width:16px;height:16px;margin-top:1px;flex-shrink:0}
+.check-item{display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:13px;color:var(--ink-600);min-height:44px;padding:12px 0;margin-block:-6px}
+.check-item input{accent-color:var(--brand);width:20px;height:20px;margin:-1px 0 0;flex-shrink:0}
 .check-item span.is-done{color:var(--ink-500);text-decoration:line-through;text-decoration-color:var(--ink-400)}
 
 .tag.custom{background:var(--brand-050);color:var(--brand-700)}
@@ -845,7 +836,7 @@ ul.sd-list li::before{
   display:inline-flex;align-items:center;gap:7px;
   padding:9px 15px;border-radius:var(--r-pill);
   background:var(--brand-050);border:1px solid var(--brand-100);
-  color:var(--accent-deep);font-size:13.5px;font-weight:600;text-decoration:none;
+  color:var(--accent-deep);font-size:13px;font-weight:600;text-decoration:none;
   transition:background-color var(--dur) ease,border-color var(--dur) ease;
 }
 .sd-links a:hover{background:var(--brand-100);border-color:var(--accent-strong)}
@@ -1043,8 +1034,8 @@ ul.sd-list li::before{
     display:none !important;
   }
   body{background:#fff}
-  .screen,.workspace{max-width:none;padding:0;display:block}
-  .chat-col{display:none}
+  .screen{max-width:none;padding:0;display:block}
+  .chat-drawer,.chat-toggle,.plan-actions,.backup-nudge,.toast,.site-footer{display:none !important}
   .tl-card{box-shadow:none;border:1px solid #ccc;break-inside:avoid}
   .tl-item{break-inside:avoid}
   .tl-why summary{display:none}
@@ -1111,6 +1102,64 @@ ul.sd-list li::before{
   .tl-title{flex:1 1 100%;font-size:15px}
   .status-select{margin-top:2px}
 
-  .chat-col{max-height:none;height:auto}
-  .chat-log{max-height:52vh}
 }
+
+/* ---------------------------------------------------------------- меню действий */
+.plan-actions{margin-left:auto;display:flex;align-items:center;gap:6px}
+.menu{position:relative}
+.menu-list{
+  position:absolute;right:0;top:calc(100% + 6px);z-index:80;min-width:230px;
+  display:flex;flex-direction:column;padding:6px;
+  background:var(--bg);border:1px solid var(--line);border-radius:14px;
+  box-shadow:0 18px 40px rgba(11,18,32,.16);
+}
+.menu-list a,.menu-list button{
+  display:flex;align-items:center;min-height:44px;padding:0 14px;border:0;border-radius:10px;
+  background:none;text-align:left;font-size:14px;color:var(--ink-900);text-decoration:none;cursor:pointer;
+}
+.menu-list a:hover,.menu-list button:hover{background:var(--bg-sunk)}
+.menu-list .menu-danger{color:var(--stop-700);border-top:1px solid var(--line);border-radius:0 0 10px 10px;margin-top:4px}
+.narrow-only{display:none !important}
+@media (max-width:640px){
+  .wide-only{display:none !important}
+  .narrow-only{display:flex !important}
+  .topbar-inner{padding:0 16px}
+}
+
+/* ---------------------------------------------------------------- первый экран */
+.btn-link{
+  background:none;border:0;padding:8px 4px;min-height:44px;cursor:pointer;
+  font-size:14px;font-weight:500;color:inherit;text-decoration:underline;text-underline-offset:3px;
+}
+.card-dark .btn-link{color:var(--on-navy)}
+.intake-privacy{margin-top:14px;font-size:13px}
+.edit-head{margin-bottom:20px}
+.edit-head h1{font-size:24px;margin-bottom:8px}
+
+/* ---------------------------------------------------------------- ошибки у полей */
+.field-error{margin-top:6px;font-size:13px;font-weight:500;color:var(--stop-700)}
+[aria-invalid="true"]{border-color:var(--stop-700) !important;box-shadow:0 0 0 3px var(--stop-050)}
+
+/* ---------------------------------------------------------------- напоминание о копии */
+.backup-nudge{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+  margin-bottom:18px;padding:14px 16px;border-radius:14px;
+  background:var(--warn-050);border:1px solid rgba(138,83,0,.18);
+}
+.backup-nudge p{font-size:14px;color:var(--warn-700);max-width:56ch}
+.backup-nudge-actions{display:flex;gap:6px}
+
+/* ---------------------------------------------------------------- toast и подвал */
+.toast{
+  position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:90;
+  max-width:min(520px,calc(100vw - 32px));padding:12px 18px;border-radius:14px;
+  background:var(--ink-900);color:#fff;font-size:14px;box-shadow:0 16px 40px rgba(11,18,32,.3);
+}
+.site-footer{max-width:860px;margin:0 auto;padding:0 20px 96px;font-size:12px;color:var(--ink-500)}
+.roadmap-next{display:flex;flex-direction:column;gap:3px}
+.rh-label{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--on-navy-muted)}
+.rh-step{font-size:17px;font-weight:600;color:var(--on-navy) !important}
+.rh-when{font-size:13px;color:var(--on-navy-muted)}
+.rh-when.is-overdue{color:#ffb4b4}
+.month-year{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:420px}
+.intake-when{margin-bottom:16px}

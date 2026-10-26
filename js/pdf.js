@@ -16,6 +16,8 @@
  */
 
 import { PHASE_LABELS } from './plan.js';
+import { contentFor } from './content.js';
+import { SITE } from './site.js';
 
 const PT = 1; // всё считаем сразу в пунктах PDF
 const PAGE = { w: 595.28, h: 841.89 }; // A4 portrait
@@ -240,18 +242,26 @@ function layout(state, fonts) {
   }
 
   /* --- шаги --- */
+  // Высота заголовка шага, строки сроков и первых строк описания: столько
+  // места должно остаться на странице, иначе заголовок уезжает в низ одной
+  // страницы, а его текст — на следующую.
+  const headBlock = (step) =>
+    wrap(bold, `00. ${step.title}`, 11.5, CONTENT_W).length * 11.5 * 1.38 + 2 +
+    9 * 1.38 + 3 +
+    Math.min(2, wrap(regular, step.description ?? '', 9.5, CONTENT_W).length) * 9.5 * 1.38;
+
   let phase = null;
   roadmap.steps.forEach((step, i) => {
     if (step.phase !== phase) {
       phase = step.phase;
-      need(26);
+      need(26 + headBlock(step));
       y -= 6;
       text((PHASE_LABELS.get(phase) ?? phase).toUpperCase(), {
         size: 8.5, font: 'B', color: '0.42 0.46 0.54', gap: 3,
       });
     }
 
-    need(40);
+    need(headBlock(step));
     text(`${i + 1}. ${step.title}`, { size: 11.5, font: 'B', gap: 2 });
 
     const meta = [
@@ -286,6 +296,27 @@ function layout(state, fonts) {
       if (!lines.length) y -= 13;
     }
 
+    // Порядок действий и ссылки со страницы шага: без них бумажный план —
+    // только список заголовков, а за подробностями всё равно надо на сайт.
+    const content = contentFor(step.id);
+    const how = content?.sections?.find((sec) => sec.kind === 'how');
+    if (how?.items?.length) {
+      need(30);
+      y -= 3;
+      text('Порядок действий', { size: 9, font: 'B', color: '0.25 0.29 0.36', gap: 1 });
+      how.items.forEach((item, n) => {
+        text(`${n + 1}. ${typeof item === 'string' ? item : item.t}`, { size: 9, color: '0.25 0.29 0.36', x: MARGIN.left + 8 });
+      });
+    }
+    if (content?.links?.length) {
+      need(26);
+      y -= 3;
+      text('Проверить в первоисточнике', { size: 9, font: 'B', color: '0.25 0.29 0.36', gap: 1 });
+      for (const l of content.links) {
+        text(`${l.label} — ${l.url}`, { size: 8.5, color: '0.12 0.37 0.84', x: MARGIN.left + 8 });
+      }
+    }
+
     y -= 9;
   });
 
@@ -307,6 +338,17 @@ function layout(state, fonts) {
   }
 
   pages.push(ops);
+
+  // Колонтитул: чей это документ и какая страница — у распечатки без него
+  // перепутанные листы не собрать обратно.
+  const footY = MARGIN.bottom - 26;
+  pages.forEach((page, n) => {
+    const left = [SITE.name, SITE.url].filter(Boolean).join(' · ');
+    const right = `стр. ${n + 1} из ${pages.length}`;
+    const rw = widthOf(regular, right, 8);
+    page.push(`BT /R 8 Tf 0.55 0.58 0.64 rg ${MARGIN.left} ${footY} Td <${glyphHex(regular, left)}> Tj ET`);
+    page.push(`BT /R 8 Tf 0.55 0.58 0.64 rg ${PAGE.w - MARGIN.right - rw} ${footY} Td <${glyphHex(regular, right)}> Tj ET`);
+  });
   return pages;
 }
 

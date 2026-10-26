@@ -27,7 +27,7 @@ globalThis.localStorage = {
 const plan = await import('../js/plan.js');
 const { buildICS } = await import('../js/exporter.js');
 const { buildPDF, parseTTF } = await import('../js/pdf.js');
-const { heuristicReply } = await import('../js/assistant.js');
+const { heuristicReply, parseDateFromText } = await import('../js/assistant.js');
 const store = await import('../js/store.js');
 const contentModule = await import('../js/content.js');
 const { STEP_CONTENT } = contentModule;
@@ -192,9 +192,34 @@ test('PDF: корректная структура, xref указывает на
 
 test('ассистент: «не успеваю» — это сорванный срок с предложением правки, а не прогресс', () => {
   const rm = build(TYPICAL);
-  const r = heuristicReply('я не успеваю подать документы', { profileName: 'Т', steps: rm.steps, roadmap: rm });
+  const ask = heuristicReply('я не успеваю подать документы', { profileName: 'Т', steps: rm.steps, roadmap: rm });
+  assert.equal(ask.proposal, null, 'без даты срок не должен сдвигаться наугад');
+  assert.match(ask.text, /на какую дату/);
+  const r = heuristicReply('перенеси подачу документов на 15.05.2031', { profileName: 'Т', steps: rm.steps, roadmap: rm });
   assert.ok(r.proposal, 'нет предложения правки');
   assert.equal(r.proposal.operations[0].op, 'update_step');
+  assert.equal(r.proposal.operations[0].deadline, '2031-05-15');
+});
+
+test('ассистент: дата из текста', () => {
+  const now = new Date(2026, 9, 26, 12);
+  assert.equal(parseDateFromText('на 15 мая', now), '2027-05-15');
+  assert.equal(parseDateFromText('на 30 ноября', now), '2026-11-30');
+  assert.equal(parseDateFromText('3 марта 2028', now), '2028-03-03');
+  assert.equal(parseDateFromText('к 05.01', now), '2027-01-05');
+  assert.equal(parseDateFromText('2027-09-01', now), '2027-09-01');
+  assert.equal(parseDateFromText('31.04.2027', now), null);
+  assert.equal(parseDateFromText('не успеваю', now), null);
+});
+
+test('ассистент: приветствие, «что ты умеешь», «Болашак», деньги', () => {
+  const rm = build(TYPICAL);
+  const ask = (q) => heuristicReply(q, { profileName: 'Т', steps: rm.steps, roadmap: rm }).text;
+  assert.match(ask('привет'), /Здравствуйте/);
+  assert.match(ask('что ты умеешь?'), /перенести срок/);
+  assert.match(ask('а болашак?'), /bolashak\.gov\.kz/);
+  assert.match(ask('сколько нужно денег?'), /точных сумм/);
+  assert.doesNotMatch(ask('сколько нужно денег?'), /готово \d+ из/);
 });
 
 test('ассистент: на вопрос не по плану честно говорит, что не нашёл', () => {

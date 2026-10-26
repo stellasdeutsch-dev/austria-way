@@ -8,8 +8,8 @@
 #   scripts/sync-core.sh            скопировать ядро во все сайты
 #   scripts/sync-core.sh --check    только сравнить; код 1, если разошлись
 #
-# Своё у каждого сайта: js/site.js (идентичность), js/plan.js (шаги и
-# фазы), js/content.js (тексты), js/app.js (анкета), index.html и
+# Своё у каждого сайта: js/site.js (идентичность), js/plan.js (шаги, фазы
+# и пример анкеты), js/content.js (тексты), index.html (поля анкеты) и
 # tests/fixtures.mjs (какие анкеты перебирать в тестах).
 set -euo pipefail
 
@@ -17,12 +17,12 @@ HERE="$(cd "$(dirname "$0")/.." && pwd)"
 TARGETS=("${SYNC_TARGETS:-$HERE/../ai-roadmap}")
 
 CORE=(
-  js/utils.js js/store.js js/assistant.js js/timeline.js js/stepview.js
-  js/exporter.js js/calendar.js js/pdf.js js/sanitize.js
-  css/app.css
+  js/app.js js/utils.js js/store.js js/assistant.js js/timeline.js js/stepview.js
+  js/exporter.js js/calendar.js js/pdf.js js/sanitize.js js/steps.js js/intake.js js/chat.js
+  css/app.css sw.js
   fonts/inter-cyrillic.woff2 fonts/inter-latin.woff2 fonts/inter-latin-ext.woff2
   fonts/pdf-regular.ttf fonts/pdf-semibold.ttf
-  tests/core.test.mjs package.json scripts/sync-core.sh scripts/check-links.sh
+  tests/core.test.mjs tests/cdp.mjs tests/smoke.mjs package.json scripts/sync-core.sh scripts/check-links.sh
 )
 
 # Каноническая копия ядра — austria-way. Скрипт попадает в сайты-сёстры

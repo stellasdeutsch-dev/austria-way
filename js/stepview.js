@@ -13,6 +13,7 @@
 
 import { $, esc, formatDate } from './utils.js';
 import { STATUSES, syncStatusFromChecklist, daysFromToday, PHASE_LABELS, toneOf } from './plan.js';
+import { setStepStatus } from './steps.js';
 import { contentFor, iconForPhase } from './content.js';
 // Пространство имён, а не именованный импорт: CONTENT_META есть не у
 // каждого сайта, и отсутствующий именованный экспорт уронил бы модуль
@@ -126,7 +127,7 @@ export function renderStepPage(state, stepId) {
     : '<p class="sd-muted">У этого шага нет чек-листа. Его можно добавить кнопкой «Изменить» в списке шагов.</p>';
 
   $('#stepDetail').innerHTML = `
-    <nav class="sd-back-row">
+    <nav class="sd-back-row" aria-label="Обратно к плану">
       <a class="sd-back" href="#/" data-sd="back">← Все шаги плана</a>
       <span class="sd-crumb">Шаг ${step.order} из ${state.roadmap.steps.length} · ${esc(phaseLabel)}</span>
     </nav>
@@ -241,7 +242,7 @@ export function renderStepPage(state, stepId) {
         : ''
     }
 
-    <nav class="sd-nav" id="sdNav"></nav>
+    <nav class="sd-nav" id="sdNav" aria-label="Соседние шаги"></nav>
   `;
 
   renderStepNav(state, step);
@@ -290,8 +291,7 @@ export function initStepView(state, onChange) {
       renderStepPage(state, stepId);
       onChange();
     } else if (el.matches('[data-sd="status"]')) {
-      if (!STATUSES.includes(el.value)) return;
-      step.status = el.value;
+      if (!setStepStatus(step, el.value)) return;
       state.roadmap.updatedAt = new Date().toISOString();
       renderStepPage(state, stepId);
       onChange();

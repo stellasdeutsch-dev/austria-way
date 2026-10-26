@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Австрия: план поступления — офлайн-планировщик</title>
+<title>Австрия: план поступления</title>
 <meta name="description" content="Пошаговый план поступления в австрийский университет: Zulassung, Aufenthaltsbewilligung, ÖH-Beitrag, Meldezettel. Разные планы для граждан ЕС и третьих стран, дедлайны от начала семестра, экспорт в календарь. Работает офлайн, без сервера и регистрации.">
 <meta name="robots" content="index,follow">
 <link rel="canonical" href="https://stellasdeutsch-dev.github.io/austria-way/">
@@ -45,14 +45,20 @@
       <span>Австрия&nbsp;— план</span>
     </div>
 
-    <div class="topbar-meta">
-      <span class="badge">Шаблон — проверяйте сроки по ссылкам в шагах</span>
-      <a class="btn btn-ghost btn-sm no-print" id="calendarLink" href="#/calendar" hidden>Календарь</a>
-      <button class="btn btn-ghost btn-sm no-print" id="pdfBtn" type="button" hidden>Скачать PDF</button>
-      <button class="btn btn-ghost btn-sm no-print" id="backupBtn" type="button" hidden
-              title="Файл для восстановления плана в другом браузере — его принимает кнопка «Загрузить план из файла»">Резервная копия</button>
-      <button class="btn btn-ghost btn-sm no-print" id="resetBtn" type="button" hidden>Начать заново</button>
-    </div>
+    <nav class="plan-actions no-print" id="planActions" aria-label="Действия с планом" hidden>
+      <a class="btn btn-ghost btn-sm wide-only" href="#/calendar">Календарь</a>
+      <button class="btn btn-ghost btn-sm wide-only" type="button" data-cmd="pdf">Скачать PDF</button>
+      <div class="menu">
+        <button class="btn btn-ghost btn-sm" type="button" id="menuBtn" aria-haspopup="true" aria-expanded="false" aria-controls="menuList">Ещё</button>
+        <div class="menu-list" id="menuList" hidden>
+          <a class="narrow-only" href="#/calendar">Календарь</a>
+          <button class="narrow-only" type="button" data-cmd="pdf">Скачать PDF</button>
+          <button type="button" data-cmd="edit">Изменить ответы</button>
+          <button type="button" data-cmd="backup">Резервная копия файлом</button>
+          <button type="button" class="menu-danger" data-cmd="reset">Начать заново</button>
+        </div>
+      </div>
+    </nav>
   </div>
 </header>
 
@@ -63,29 +69,24 @@
     <div class="intake">
       <div class="intake-head card-dark">
         <p class="kicker">Австрия</p>
-        <h1>Поступление шаг за шагом</h1>
+        <h1>Поступление в австрийский вуз шаг за шагом</h1>
         <p class="lede">
-          План поступления в австрийский университет: Zulassung, вид на жительство,
-          ÖH-Beitrag, Meldezettel. Для граждан ЕС и третьих стран это два разных
-          маршрута разной длины — план собирается под ваш случай, со сроками назад
-          от начала семестра. Работает прямо в браузере: без сервера, без обращения
-          к внешним сайтам и без регистрации.
+          Ответьте на несколько вопросов — и получите список дел со сроками: заявление
+          в вуз, виза и вид на жительство, взнос студсоюза, регистрация по адресу.
+          Сроки считаются назад от начала семестра. Граждан ЕС и остальных ждут
+          два разных маршрута: у вторых он длиннее, с визой и подтверждением денег.
         </p>
-        <div class="pill-row">
-          <span class="pill-dark">ЕС и третьи страны — разные планы</span>
-          <span class="pill-dark">Ссылки на официальные источники</span>
-          <span class="pill-dark">Работает офлайн</span>
-        </div>
         <div class="quickfill">
-          <button class="btn btn-outline btn-sm" type="button" id="fillSampleBtn">
-            Заполнить примером
-          </button>
-          <button class="btn btn-outline btn-sm" type="button" id="importBtn">
-            Загрузить план из файла
-          </button>
-          <input type="file" id="importFile" accept="application/json" hidden>
-          <span class="hint">Пример — чтобы посмотреть план сразу; загрузка — чтобы восстановить ранее скачанный план</span>
+          <button class="btn btn-primary" type="button" id="fillSampleBtn">Посмотреть пример плана</button>
+          <button class="btn-link" type="button" id="importBtn">У меня есть файл плана</button>
+          <input type="file" id="importFile" accept="application/json,.json" hidden>
         </div>
+        <p class="intake-privacy">Ничего не отправляется на сервер: план хранится в этом браузере и открывается без интернета.</p>
+      </div>
+
+      <div class="edit-head card" id="editHead" hidden>
+        <h1>Изменить ответы</h1>
+        <p class="lede">План пересоберётся по новым ответам. Отметки, свои шаги и сроки, которые вы переносили вручную, сохранятся.</p>
       </div>
 
       <form id="profileForm" novalidate>
@@ -93,8 +94,8 @@
         <fieldset class="card">
           <legend>Гражданство <span class="optional">— от него зависит весь план</span></legend>
           <p class="fieldset-note">
-            Это единственное поле, которое меняет не текст, а состав шагов: для граждан ЕС/ЕЭЗ и Швейцарии
-            нет визы и вида на жительство до въезда, нет подтверждения средств и обычно нет платы за обучение.
+            От этого ответа зависит сам список шагов: гражданам ЕС/ЕЭЗ и Швейцарии не нужны виза,
+            вид на жительство до въезда и подтверждение денег, и обычно они не платят за обучение.
           </p>
 
           <div class="field">
@@ -165,7 +166,7 @@
 
             <label class="field">
               <span class="label">Год начала</span>
-              <input name="intakeYear" type="number" min="2026" max="2032" placeholder="2027">
+              <input name="intakeYear" type="number" min="2026" max="2032" placeholder="2027" data-date-field>
               <span class="hint">Пусто — возьму ближайший подходящий</span>
             </label>
           </div>
@@ -201,25 +202,12 @@
         </fieldset>
 
         <div class="submit-row">
-          <span class="hint" style="margin:0">Все поля остаются только в вашем браузере (localStorage) — экспортируйте план файлом, если нужна резервная копия</span>
-          <button class="btn btn-primary btn-lg" type="submit" id="submitBtn">
-            Построить план
-          </button>
+          <button class="btn btn-ghost" type="button" id="cancelEditBtn" hidden>Отмена</button>
+          <button class="btn btn-primary btn-lg" type="submit" id="submitBtn">Построить план</button>
         </div>
 
         <p class="form-error" id="formError" role="alert" hidden></p>
       </form>
-    </div>
-  </section>
-
-  <!-- ============================ ЭКРАН 2: ЗАГРУЗКА ================== -->
-  <section class="screen" id="screenLoading" hidden>
-    <div class="loading">
-      <ol class="steps-progress" id="loadingSteps">
-        <li data-step="build"><span class="dot"></span>Собираем план по вашим данным</li>
-        <li data-step="render"><span class="dot"></span>Готовим таймлайн</li>
-      </ol>
-      <p class="loading-note">План собирается по шаблону прямо в браузере, без обращения к серверу.</p>
     </div>
   </section>
 
@@ -244,23 +232,37 @@
   </section>
 
   <!-- ============================ ЭКРАН 4: РОАДМАП ==================== -->
-  <section class="screen workspace" id="screenRoadmap" hidden>
-
+  <section class="screen" id="screenRoadmap" hidden>
     <div class="roadmap-col">
       <div class="roadmap-head card-dark">
-        <div>
-          <h1 id="roadmapTitle"></h1>
-          <p class="summary" id="roadmapSummary"></p>
+        <h1 id="roadmapTitle"></h1>
+        <p class="summary" id="roadmapSummary"></p>
+        <p class="roadmap-next" id="roadmapNext"></p>
+        <div class="progress">
+          <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+          <span class="progress-label" id="progressLabel"></span>
         </div>
-        <span class="confidence" id="confidence"></span>
+        <button class="btn btn-primary btn-sm no-print" type="button" id="setDateBtn" data-cmd="edit-date" hidden>Указать год начала — и появятся сроки</button>
+        <details class="how-built">
+          <summary>Как собран этот план</summary>
+          <p>
+            <span id="confidence"></span>. Шаги и сроки взяты из общих правил австрийских вузов
+            и миграционной службы и посчитаны назад от начала семестра. У вашего вуза сроки
+            могут отличаться — у каждого шага есть ссылка на официальный источник.
+            Это неофициальный инструмент, он не связан с вузами и госорганами.
+          </p>
+        </details>
       </div>
 
-      <div class="progress">
-        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
-        <span class="progress-label" id="progressLabel"></span>
+      <div class="backup-nudge no-print" id="backupNudge" hidden>
+        <p>План хранится только в этом браузере. Скачайте копию файлом — с ней план можно открыть на другом устройстве.</p>
+        <div class="backup-nudge-actions">
+          <button class="btn btn-primary btn-sm" type="button" data-cmd="backup">Скачать копию</button>
+          <button class="btn btn-ghost btn-sm" type="button" data-cmd="backup-later">Позже</button>
+        </div>
       </div>
 
-      <div class="filters" aria-label="Фильтр шагов">
+      <div class="filters" role="group" aria-label="Фильтр шагов">
         <button class="chip is-active" data-filter="all" type="button">Все</button>
         <button class="chip" data-filter="not_started" type="button">Не начато</button>
         <button class="chip" data-filter="in_progress" type="button">В процессе</button>
@@ -290,25 +292,34 @@
       </section>
     </div>
 
-    <!-- ------------------------------ ЧАТ ------------------------------ -->
-    <aside class="chat-col no-print" aria-label="Чат с ассистентом">
+    <button class="chat-toggle no-print" type="button" id="chatToggle" aria-expanded="false" aria-controls="chatDrawer">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M4 5h16v11H8l-4 4V5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+      </svg>
+      Вопрос по плану
+    </button>
+
+    <aside class="chat-drawer no-print" id="chatDrawer" aria-label="Помощник по плану" hidden>
       <div class="chat-head">
-        <h2>Ассистент</h2>
-        <p id="chatContext"></p>
+        <div>
+          <h2>Помощник по плану</h2>
+          <p id="chatContext"></p>
+        </div>
+        <button class="btn btn-ghost btn-sm" type="button" id="chatClose" aria-label="Закрыть помощника">×</button>
       </div>
 
       <div class="chat-log" id="chatLog" aria-live="polite"></div>
 
       <div class="chat-suggestions" id="chatSuggestions">
         <button type="button" class="chip chip-sm">Что дальше?</button>
-        <button type="button" class="chip chip-sm">Сколько осталось?</button>
-        <button type="button" class="chip chip-sm">Когда подавать на пребывание?</button>
-        <button type="button" class="chip chip-sm">Зачем апостиль?</button>
+        <button type="button" class="chip chip-sm">Когда подавать на вид на жительство?</button>
+        <button type="button" class="chip chip-sm">Сколько нужно денег?</button>
+        <button type="button" class="chip chip-sm">Что ты умеешь?</button>
       </div>
 
       <form class="chat-form" id="chatForm">
-        <label class="sr-only" for="chatInput">Сообщение ассистенту</label>
-        <textarea id="chatInput" rows="1" placeholder="Спросите что угодно про ваш план…"></textarea>
+        <label class="sr-only" for="chatInput">Вопрос помощнику</label>
+        <textarea id="chatInput" rows="1" placeholder="Вопрос про шаг или срок…"></textarea>
         <button class="btn btn-primary btn-icon" type="submit" id="chatSend" aria-label="Отправить">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M4 12h15m0 0-6-6m6 6-6 6" stroke="currentColor" stroke-width="2"
@@ -326,12 +337,18 @@
 
   <!-- ====================== ЭКРАН 6: КАЛЕНДАРЬ ======================= -->
   <section class="screen screen-calendar" id="screenCalendar" hidden>
-    <nav class="sd-back-row">
+    <nav class="sd-back-row" aria-label="Обратно к плану">
       <a class="sd-back" href="#/">← Все шаги плана</a>
     </nav>
     <div id="calendarBody"></div>
   </section>
 </main>
+
+<footer class="site-footer no-print">
+  <p>Неофициальный инструмент: не связан с австрийскими вузами и госорганами. Сроки сверяйте по ссылкам в шагах.</p>
+</footer>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="js/app.js" type="module"></script>
 </body>

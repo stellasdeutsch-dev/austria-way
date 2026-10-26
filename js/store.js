@@ -108,6 +108,7 @@ export function persist(state) {
       roadmap: state.roadmap,
       messages: state.messages,
       pendingProposal: state.pendingProposal,
+      meta: state.meta,
     });
     localStorage.setItem(STORAGE_KEY, payload);
     return { ok: true };

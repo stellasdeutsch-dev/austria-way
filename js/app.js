@@ -1,28 +1,26 @@
 /**
- * AI Roadmap — офлайн-планировщик поступления.
+ * Планировщик поступления: оболочка приложения.
  *
- * Полностью статичная версия: без сервера, без сети, без ключей API,
- * без регистрации. План строится по шаблону прямо в браузере; результат
- * и переписка с ассистентом хранятся в localStorage этого устройства —
- * единственная копия плана существует здесь же, поэтому экспорт в файл
- * (см. exporter.js) не опция, а необходимость: очистка данных браузера
- * или переход на другое устройство иначе означают потерю плана без следа.
+ * Здесь только то, что связывает части: состояние, сохранение, экраны,
+ * маршруты, меню действий, напоминание о резервной копии и офлайн-кэш.
+ * Анкета — в intake.js, чат — в chat.js, план — в timeline.js, страница
+ * шага — в stepview.js, календарь — в calendar.js.
  *
- * Ничего никуда не отправляется — это и есть единственный безопасный
- * способ сделать инструмент публичным на GitHub Pages: настоящий ключ
- * Anthropic нельзя встраивать в клиентский код, он был бы виден любому
- * через «Просмотр кода страницы».
+ * Сайт статичный: без сервера, без ключей, без регистрации. План хранится
+ * в localStorage этого браузера, поэтому резервная копия файлом — не
+ * опция, а способ не потерять план при очистке браузера или смене телефона.
  */
 
-import { $, $$, esc, formatDate } from './utils.js';
+import { $, $$ } from './utils.js';
 import * as store from './store.js';
-import { buildRoadmap, normalizeRoadmap, applyOperations } from './plan.js';
+import { normalizeRoadmap } from './plan.js';
 import { initTimeline, createTimelineUiState, refreshRoadmap, initFilters } from './timeline.js';
-import { heuristicReply } from './assistant.js';
 import { exportPdf, exportPlan, importPlanFile, downloadRaw, exportCalendar } from './exporter.js';
 import { renderStepPage, initStepView, currentStepId } from './stepview.js';
-import { renderCalendar, initCalendar, createCalendarUiState } from './calendar.js';
+import { renderCalendar, initCalendar, createCalendarUiState, positionOnNextDeadline } from './calendar.js';
 import { sanitizeRoadmap, sanitizeProposal, sanitizeMessages } from './sanitize.js';
+import { initIntake, openEdit, closeEdit, showFormError } from './intake.js';
+import { initChat, renderChatHistory, closeChat } from './chat.js';
 
 const state = {
   profile: null,
@@ -33,10 +31,11 @@ const state = {
   streaming: false,
   ui: createTimelineUiState(),
   calendarUi: createCalendarUiState(),
+  meta: { lastBackupAt: 0, snoozeUntil: 0 },
 };
 
 /* ------------------------------------------------------------------ */
-/* Сохранение — обёртка над store.persist с видимым предупреждением    */
+/* Сохранение и сообщения                                              */
 /* ------------------------------------------------------------------ */
 
 function persistState() {
@@ -44,33 +43,33 @@ function persistState() {
   if (!result.ok) {
     showBanner(
       'Не удалось сохранить план в этом браузере (например, память браузера переполнена или включён приватный режим). ' +
-        'Изменения видны сейчас, но могут потеряться при закрытии вкладки — скачайте план файлом на всякий случай.'
+        'Изменения видны сейчас, но могут потеряться при закрытии вкладки — сохраните резервную копию файлом.'
     );
   }
   return result.ok;
 }
 
-/* ------------------------------------------------------------------ */
-/* Баннер предупреждений/ошибок — один на все случаи                   */
-/* ------------------------------------------------------------------ */
-
 function showBanner(message) {
-  const el = $('#globalBanner');
   $('#globalBannerText').textContent = message;
-  el.hidden = false;
+  $('#globalBanner').hidden = false;
 }
 
-function initBanner() {
-  $('#globalBannerClose').addEventListener('click', () => {
-    $('#globalBanner').hidden = true;
-  });
+let toastTimer = 0;
+/** Короткое подтверждение действия — не ошибка, поэтому не в красном баннере. */
+function toast(message) {
+  const el = $('#toast');
+  if (!el) return;
+  el.textContent = message;
+  el.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.hidden = true; }, 4500);
 }
 
 window.addEventListener('error', () => {
-  showBanner('Произошла непредвиденная ошибка интерфейса. Попробуйте обновить страницу — план сохранён в этом браузере, скачайте его файлом, если хотите подстраховаться.');
+  showBanner('Произошла непредвиденная ошибка интерфейса. Попробуйте обновить страницу — план сохранён в этом браузере.');
 });
 window.addEventListener('unhandledrejection', () => {
-  showBanner('Произошла непредвиденная ошибка интерфейса. Попробуйте обновить страницу — план сохранён в этом браузере, скачайте его файлом, если хотите подстраховаться.');
+  showBanner('Произошла непредвиденная ошибка интерфейса. Попробуйте обновить страницу — план сохранён в этом браузере.');
 });
 
 /** Анкета из файла или хранилища: только строковые поля разумной длины. */
@@ -85,76 +84,56 @@ function sanitizeProfile(profile) {
   return out;
 }
 
-/* ------------------------------------------------------------------ */
-/* Инициализация и экраны                                              */
-/* ------------------------------------------------------------------ */
-
-function init() {
-  const result = store.loadState();
-
-  if (result.status === 'corrupt') {
-    showRecovery(result.raw);
-    return;
-  }
-
-  if (result.status === 'ok' && result.data.roadmap) {
-    state.profile = sanitizeProfile(result.data.profile);
-    // Прогоняем через normalizeRoadmap даже уже сохранённые данные: чек-листы
-    // могут быть в старом формате (миграция в store.js это чинит), а порядок
-    // шагов — не соответствовать текущему порядку фаз, если план сохранён
-    // версией до этого исправления.
-    // localStorage — тоже внешний источник: туда может записать любой скрипт
-    // на этом домене, поэтому сохранённый план проходит ту же проверку, что и файл.
-    state.roadmap = normalizeRoadmap(sanitizeRoadmap(result.data.roadmap));
-    state.messages = sanitizeMessages(result.data.messages);
-    state.pendingProposal = sanitizeProposal(result.data.pendingProposal);
-    renderAll();
-    renderChatHistory();
-    // Маршрут решает, что показать: список или конкретный шаг по прямой ссылке.
-    applyRoute();
-    return;
-  }
-
-  showScreen('intake');
+function sanitizeMeta(meta) {
+  const num = (v) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : 0);
+  return { lastBackupAt: num(meta?.lastBackupAt), snoozeUntil: num(meta?.snoozeUntil) };
 }
+
+/* ------------------------------------------------------------------ */
+/* Экраны и маршруты                                                   */
+/* ------------------------------------------------------------------ */
+
+const renderAll = () => {
+  refreshRoadmap(state);
+  updateBackupNudge();
+};
 
 function showScreen(name) {
-  $('#screenIntake').hidden = name !== 'intake';
-  $('#screenLoading').hidden = name !== 'loading';
-  $('#screenRoadmap').hidden = name !== 'roadmap';
-  $('#screenRecovery').hidden = name !== 'recovery';
-  $('#screenStep').hidden = name !== 'step';
-  $('#screenCalendar').hidden = name !== 'calendar';
-
-  // Действия над планом осмысленны на всех его экранах. Обращаемся через
-  // необязательный доступ: если разметка и скрипт разошлись (например,
-  // браузер держит в кэше старый app.js после правки index.html), пусть
-  // пропадёт одна кнопка, а не весь интерфейс вместе с экранами.
-  const hasPlan = name === 'roadmap' || name === 'step' || name === 'calendar';
-  for (const id of ['#resetBtn', '#pdfBtn', '#backupBtn', '#calendarLink']) {
+  for (const [id, screen] of [
+    ['#screenIntake', 'intake'],
+    ['#screenRoadmap', 'roadmap'],
+    ['#screenRecovery', 'recovery'],
+    ['#screenStep', 'step'],
+    ['#screenCalendar', 'calendar'],
+  ]) {
     const el = $(id);
-    if (el) el.hidden = !hasPlan;
+    if (el) el.hidden = name !== screen;
   }
+  // Необязательный доступ: если разметка и скрипт разошлись (старый кэш),
+  // пусть пропадёт меню, а не весь интерфейс.
+  const actions = $('#planActions');
+  if (actions) actions.hidden = !(name === 'roadmap' || name === 'step' || name === 'calendar');
+  if (name !== 'roadmap') closeChat();
+  closeMenu();
 }
 
-/* ------------------------------------------------------------------ */
-/* Маршрутизация по hash                                               */
-/* ------------------------------------------------------------------ */
-
 /**
- * Показывает экран по текущему hash. Hash, а не History API: GitHub Pages
- * не умеет отдавать index.html на произвольный путь, и /step/<id> вернул бы
- * 404 при перезагрузке страницы.
+ * Экран по текущему hash. Hash, а не History API: GitHub Pages не умеет
+ * отдавать index.html на произвольный путь, и /step/<id> вернул бы 404.
  */
 function applyRoute() {
   if (!state.roadmap) return;
 
   if (location.hash === '#/calendar') {
+    // Открывать календарь на месяце ближайшего срока, а не на сегодняшнем:
+    // сроки обычно в будущих месяцах, и первым видом было 42 пустые клетки.
+    if (!state.calendarUi.touched) positionOnNextDeadline(state);
     renderCalendar(state);
     showScreen('calendar');
     window.scrollTo(0, 0);
     return;
   }
+  state.calendarUi.touched = false;
 
   const stepId = currentStepId();
   if (stepId) {
@@ -163,18 +142,13 @@ function applyRoute() {
       window.scrollTo(0, 0);
       return;
     }
-    // Шага с таким id нет (например, он удалён, а ссылка осталась) —
-    // молча возвращаем в список, не оставляя пользователя на пустом экране.
+    // Шага с таким id нет (удалён, а ссылка осталась) — обратно в список.
     location.hash = '#/';
     return;
   }
 
   showScreen('roadmap');
   renderAll();
-}
-
-function initRouter() {
-  window.addEventListener('hashchange', applyRoute);
 }
 
 function showRecovery(raw) {
@@ -187,186 +161,133 @@ function showRecovery(raw) {
   };
 }
 
-// renderAll — единая точка полной перерисовки, определена в timeline.js
-// как refreshRoadmap; здесь только короткий алиас для читаемости вызовов.
-const renderAll = () => refreshRoadmap(state);
-
 /* ------------------------------------------------------------------ */
-/* Анкета                                                              */
+/* Меню действий                                                       */
 /* ------------------------------------------------------------------ */
-
-const SAMPLE_PROFILE = {
-  citizenshipGroup: 'third',
-  name: 'Аружан',
-  citizenship: 'Казахстан',
-  university: 'Universität Wien',
-  program: 'MSc Informatik',
-  degreeLevel: 'master',
-  programLanguage: 'de',
-  semester: 'ws',
-  intakeYear: String(sampleIntakeYear()),
-  languageReady: 'no',
-  notes: 'Нужно общежитие, загранпаспорт истекает в мае.',
-};
 
 /**
- * Год начала учёбы для примера.
- *
- * Для гражданина третьей страны самый ранний шаг считается примерно за семь
- * месяцев до срока подачи документов, а сам срок — за месяц до начала
- * семестра. Ближайший октябрь поэтому не годится: пример открывался бы
- * сплошной красной простынёй «просрочено», как будто инструмент сломан.
- * Берём ближайший зимний семестр, до которого остаётся хотя бы MIN_RUNWAY.
+ * На телефоне раньше все четыре кнопки действий лежали за правым краем
+ * экрана в ленте со скрытой полосой прокрутки — календаря и PDF там по сути
+ * не было. Теперь редкие действия в меню «Ещё», а на узком экране туда же
+ * уходят и календарь с PDF: меню всегда в пределах экрана.
  */
-function sampleIntakeYear() {
-  const MIN_RUNWAY_DAYS = 420;
-  const now = new Date();
-  let year = now.getFullYear();
-  while ((new Date(year, 9, 1, 12) - now) / 86400000 < MIN_RUNWAY_DAYS) year += 1;
-  return year;
+function closeMenu() {
+  const list = $('#menuList');
+  if (!list || list.hidden) return;
+  list.hidden = true;
+  $('#menuBtn')?.setAttribute('aria-expanded', 'false');
 }
 
-function fillSampleProfile() {
-  const form = $('#profileForm');
-  for (const [name, value] of Object.entries(SAMPLE_PROFILE)) {
-    const field = form.elements[name];
-    if (!field) continue;
-    if (field instanceof RadioNodeList) {
-      const match = [...field].find((el) => el.value === value);
-      if (match) match.checked = true;
-    } else {
-      field.value = value;
+function initMenu() {
+  const btn = $('#menuBtn');
+  const list = $('#menuList');
+  if (!btn || !list) return;
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const open = list.hidden;
+    list.hidden = !open;
+    btn.setAttribute('aria-expanded', String(open));
+    if (open) list.querySelector('a,button:not([hidden])')?.focus();
+  });
+  document.addEventListener('click', (e) => {
+    if (!list.hidden && !list.contains(e.target)) closeMenu();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !list.hidden) {
+      closeMenu();
+      btn.focus();
     }
+  });
+  list.addEventListener('click', (e) => {
+    if (e.target.closest('a,button')) closeMenu();
+  });
+}
+
+async function runPdf(btn) {
+  const label = btn?.textContent;
+  // Шрифты тянутся по сети при первом нажатии — без отклика кнопка выглядит
+  // нажатой впустую.
+  if (btn) { btn.disabled = true; btn.textContent = 'Готовлю…'; }
+  try {
+    await exportPdf(state);
+  } catch (err) {
+    showBanner(`Не удалось собрать PDF: ${err.message}`);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = label; }
   }
-  showFormError(null);
 }
 
-function initForm() {
-  $('#fillSampleBtn').addEventListener('click', fillSampleProfile);
+function startEdit({ focusDate = false } = {}) {
+  const focus = openEdit(state, { focusDate });
+  showScreen('intake');
+  window.scrollTo(0, 0);
+  focus();
+}
 
-  $('#profileForm').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const form = e.target;
-    const profile = Object.fromEntries(new FormData(form).entries());
-
-    const missing = ['name', 'university', 'program'].filter((f) => !profile[f]?.trim());
-    if (missing.length) {
-      showFormError('Заполните обязательные поля: имя, университет, программа.');
-      form.elements[missing[0]].focus();
-      return;
+function initCommands() {
+  document.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-cmd]');
+    if (!el) return;
+    const cmd = el.dataset.cmd;
+    if (cmd === 'pdf') runPdf(el);
+    else if (cmd === 'backup') backupNow();
+    else if (cmd === 'backup-later') snoozeBackup();
+    else if (cmd === 'edit') startEdit();
+    else if (cmd === 'edit-date') startEdit({ focusDate: true });
+    else if (cmd === 'reset') {
+      if (!confirm('Начать заново? План, отметки и переписка будут удалены. Если хотите их сохранить — сначала сделайте резервную копию (меню «Ещё»).')) return;
+      store.clearState();
+      location.hash = '';
+      location.reload();
     }
-    showFormError(null);
-
-    showScreen('loading');
-    markLoading('build');
-
-    // Небольшая пауза только ради ощущения «идёт сборка» — вся работа
-    // на самом деле синхронна и не требует сети.
-    setTimeout(() => {
-      try {
-        markLoading('render');
-        state.profile = profile;
-        state.roadmap = normalizeRoadmap(buildRoadmap(profile));
-        state.messages = [];
-        state.pendingProposal = null;
-        state.filter = 'all';
-        state.ui = createTimelineUiState();
-        persistState();
-      } catch (err) {
-        // Раньше любая ошибка здесь оставляла экран загрузки навсегда:
-        // глобальный обработчик показывал баннер, но вернуться к анкете
-        // было уже нечем. Возвращаем форму и говорим, что произошло.
-        showScreen('intake');
-        showFormError(`Не удалось собрать план: ${err.message}. Проверьте поля и попробуйте ещё раз.`);
-        return;
-      }
-
-      setTimeout(() => {
-        // Новый план — всегда начинаем со списка, даже если в адресе остался
-        // hash шага из прошлого плана (его id может уже не существовать).
-        if (location.hash && location.hash !== '#/') location.hash = '#/';
-        showScreen('roadmap');
-        renderAll();
-        renderChatHistory();
-      }, 250);
-    }, 400);
-  });
-
-  $('#resetBtn').addEventListener('click', () => {
-    if (!confirm('Начать заново? Текущий план и переписка будут потеряны. Если хотите сохранить их — сначала нажмите «Резервная копия».')) return;
-    store.clearState();
-    location.reload();
-  });
-}
-
-function showFormError(message) {
-  const el = $('#formError');
-  el.textContent = message ?? '';
-  el.hidden = !message;
-  if (message) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-}
-
-function markLoading(step) {
-  const order = ['build', 'render'];
-  const index = order.indexOf(step);
-  $$('#loadingSteps li').forEach((li, i) => {
-    li.classList.toggle('is-active', i === index);
-    li.classList.toggle('is-done', i < index);
   });
 }
 
 /* ------------------------------------------------------------------ */
-/* Экспорт / импорт / печать                                           */
+/* Резервная копия                                                     */
 /* ------------------------------------------------------------------ */
+
+const DAY = 86400000;
+
+function backupNow() {
+  exportPlan(state);
+  state.meta.lastBackupAt = Date.now();
+  persistState();
+  updateBackupNudge();
+  toast('Резервная копия скачана. Её принимает кнопка «У меня есть файл плана» на первом экране.');
+}
+
+function snoozeBackup() {
+  state.meta.snoozeUntil = Date.now() + 7 * DAY;
+  persistState();
+  updateBackupNudge();
+}
 
 /**
- * «Зачем этот шаг» — это <details>: видимость содержимого управляется
- * атрибутом open, который CSS-медиа-запрос @media print переопределить
- * не может (это не display, а нативное поведение элемента). Поэтому перед
- * печатью раскрываем все .tl-why, а после — возвращаем как было, чтобы
- * печать не меняла состояние интерфейса для самого пользователя.
+ * План живёт только в этом браузере. Кнопка копии была, но о ней никто не
+ * напоминал: очистил браузер или сменил телефон — план пропал. Напоминание
+ * появляется, когда терять уже есть что (несколько отметок), и повторяется
+ * раз в месяц после последней копии.
  */
-function initPrintExpand() {
-  window.addEventListener('beforeprint', () => {
-    $$('.tl-why').forEach((d) => {
-      if (!d.open) {
-        d.dataset.printOpened = 'true';
-        d.open = true;
-      }
-    });
-  });
-  window.addEventListener('afterprint', () => {
-    $$('.tl-why[data-print-opened]').forEach((d) => {
-      d.open = false;
-      delete d.dataset.printOpened;
-    });
-  });
+function updateBackupNudge() {
+  const el = $('#backupNudge');
+  if (!el || !state.roadmap) return;
+  const marks = state.roadmap.steps.reduce(
+    (n, s) => n + (s.status === 'done' ? 1 : 0) + (s.checklist ?? []).filter((i) => i.done).length,
+    0
+  );
+  const now = Date.now();
+  const stale = !state.meta.lastBackupAt || now - state.meta.lastBackupAt > 30 * DAY;
+  el.hidden = !(marks >= 3 && stale && now > state.meta.snoozeUntil);
 }
 
-function initExportImport() {
-  // PDF — чтобы читать и печатать; .json — чтобы восстановить план на другом
-  // устройстве. Это разные задачи, и вторая нужна: план существует только в
-  // localStorage одного браузера, и импорт без экспорта был бы бесполезен.
-  $('#backupBtn').addEventListener('click', () => exportPlan(state));
-  $('#pdfBtn').addEventListener('click', async (e) => {
-    const btn = e.currentTarget;
-    const label = btn.textContent;
-    // Сборка PDF занимает доли секунды, но шрифты тянутся по сети при
-    // первом нажатии — без обратной связи кнопка выглядит нажатой впустую.
-    btn.disabled = true;
-    btn.textContent = 'Готовлю…';
-    try {
-      await exportPdf(state);
-    } catch (err) {
-      showBanner(`Не удалось собрать PDF: ${err.message}`);
-    } finally {
-      btn.disabled = false;
-      btn.textContent = label;
-    }
-  });
+/* ------------------------------------------------------------------ */
+/* Импорт и печать                                                     */
+/* ------------------------------------------------------------------ */
 
+function initImport() {
   const fileInput = $('#importFile');
-  $('#importBtn').addEventListener('click', () => fileInput.click());
+  $('#importBtn')?.addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', async () => {
     const file = fileInput.files[0];
     fileInput.value = '';
@@ -392,235 +313,129 @@ function initExportImport() {
   });
 }
 
-/* ------------------------------------------------------------------ */
-/* Чат                                                                 */
-/* ------------------------------------------------------------------ */
-
-function renderChatHistory() {
-  const log = $('#chatLog');
-  log.innerHTML = '';
-
-  if (!state.messages.length) {
-    log.innerHTML = `<p class="msg msg-empty">Спросите про любой шаг: зачем он нужен, что делать при срыве срока, какие документы собрать. Ассистент здесь отвечает по заранее заданным правилам — это офлайн-инструмент, а не языковая модель.</p>`;
-    $('#chatSuggestions').hidden = false;
-  } else {
-    for (const m of state.messages) {
-      if (m.system) appendSystem(m.content);
-      else appendMessage(m.role, m.content);
-    }
-    $('#chatSuggestions').hidden = true;
-  }
-
-  if (state.pendingProposal) appendProposal(state.pendingProposal);
-  log.scrollTop = log.scrollHeight;
-}
-
-function appendMessage(role, text) {
-  const el = document.createElement('div');
-  el.className = `msg msg-${role === 'user' ? 'user' : 'ai'}`;
-  el.textContent = text;
-  $('#chatLog').append(el);
-  return el;
-}
-
-function appendSystem(text) {
-  const el = document.createElement('div');
-  el.className = 'msg msg-system';
-  el.textContent = text;
-  $('#chatLog').append(el);
-}
-
 /**
- * Карточка предложения замыкается на КОНКРЕТНЫЙ объект proposal, а не
- * читает состояние заново при клике — иначе клик по устаревшей карточке
- * падает, если pendingProposal к этому моменту уже null или указывает
- * на другое предложение. Живой на экране может быть только один пример;
- * предыдущий незакрытый явно помечается устаревшим.
+ * «Зачем этот шаг» — это <details>, и @media print не может его раскрыть.
+ * Перед печатью (Cmd+P) раскрываем, после — возвращаем как было.
  */
-function appendProposal(proposal) {
-  const stale = $('#chatLog .proposal:not(.is-stale)');
-  if (stale) markProposalStale(stale);
-
-  const el = document.createElement('div');
-  el.className = 'proposal';
-  el.dataset.proposalId = proposal.id;
-  el.innerHTML = `
-    <h3>Предлагаю обновить план</h3>
-    <p>${esc(proposal.rationale)}</p>
-    <ul>${proposal.operations.map((op) => `<li>${esc(describeOp(op))}</li>`).join('')}</ul>
-    <div class="proposal-actions">
-      <button class="btn btn-primary btn-sm" data-apply type="button">Применить</button>
-      <button class="btn btn-ghost btn-sm" data-dismiss type="button">Не нужно</button>
-    </div>`;
-
-  el.querySelector('[data-apply]').addEventListener('click', () => applyProposal(el, proposal));
-  el.querySelector('[data-dismiss]').addEventListener('click', () => dismissProposal(el, proposal));
-
-  $('#chatLog').append(el);
-  el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-}
-
-function markProposalStale(el) {
-  el.classList.add('is-stale');
-  el.querySelectorAll('button').forEach((b) => (b.disabled = true));
-  if (!el.querySelector('.proposal-stale-note')) {
-    el.insertAdjacentHTML('beforeend', '<p class="proposal-stale-note">Это предложение устарело — разговор продолжился дальше.</p>');
-  }
-}
-
-function describeOp(op) {
-  const step = state.roadmap?.steps.find((s) => s.id === op.stepId);
-  const name = op.title || step?.title || op.stepId;
-  if (op.op === 'add_step') return `Добавить шаг «${name}»`;
-  if (op.op === 'remove_step') return `Убрать шаг «${name}»`;
-  const changes = [];
-  if (op.deadline) changes.push(`срок → ${formatDate(op.deadline)}`);
-  if (op.description) changes.push('описание');
-  return `Обновить «${name}»${changes.length ? `: ${changes.join(', ')}` : ''}`;
-}
-
-function applyProposal(card, proposal) {
-  if (card.classList.contains('is-stale')) return;
-  card.querySelectorAll('button').forEach((b) => (b.disabled = true));
-
-  const { roadmap, applied } = applyOperations(state.roadmap, proposal.operations);
-  state.roadmap = roadmap;
-  if (state.pendingProposal?.id === proposal.id) state.pendingProposal = null;
-  persistState();
-
-  renderAll();
-  card.remove();
-  const systemText = applied.length ? `План обновлён: ${applied.join(', ')}` : 'Изменений не потребовалось';
-  appendSystem(systemText);
-  state.messages.push({ role: 'assistant', content: systemText, system: true });
-  persistState();
-  $('#chatLog').scrollTop = $('#chatLog').scrollHeight;
-}
-
-function dismissProposal(card, proposal) {
-  if (state.pendingProposal?.id === proposal.id) state.pendingProposal = null;
-  persistState();
-  card.remove();
-}
-
-function initChat() {
-  const form = $('#chatForm');
-  const input = $('#chatInput');
-
-  input.addEventListener('input', () => {
-    input.style.height = 'auto';
-    input.style.height = `${Math.min(input.scrollHeight, 150)}px`;
-  });
-
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      form.requestSubmit();
-    }
-  });
-
-  $$('#chatSuggestions .chip').forEach((chip) => {
-    chip.addEventListener('click', () => {
-      input.value = chip.textContent.trim();
-      form.requestSubmit();
+function initPrintExpand() {
+  window.addEventListener('beforeprint', () => {
+    $$('.tl-why').forEach((d) => {
+      if (!d.open) {
+        d.dataset.printOpened = 'true';
+        d.open = true;
+      }
     });
   });
-
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const message = input.value.trim();
-    if (!message || state.streaming) return;
-
-    input.value = '';
-    input.style.height = 'auto';
-    $('#chatSuggestions').hidden = true;
-
-    $('#chatLog').querySelector('.msg-empty')?.remove();
-    appendMessage('user', message);
-    state.messages.push({ role: 'user', content: message });
-    persistState();
-
-    sendMessage(message);
+  window.addEventListener('afterprint', () => {
+    $$('.tl-why[data-print-opened]').forEach((d) => {
+      d.open = false;
+      delete d.dataset.printOpened;
+    });
   });
-}
-
-function sendMessage(message) {
-  state.streaming = true;
-  $('#chatSend').disabled = true;
-
-  const log = $('#chatLog');
-  const bubble = appendMessage('assistant', '');
-  bubble.innerHTML = '<span class="typing"><span></span><span></span><span></span></span>';
-  log.scrollTop = log.scrollHeight;
-
-  const { text, proposal } = heuristicReply(message, {
-    profileName: state.profile?.name,
-    steps: state.roadmap?.steps ?? [],
-    roadmap: state.roadmap,
-  });
-
-  // Имитация потокового ответа — исключительно ради интерфейса.
-  setTimeout(() => {
-    bubble.textContent = '';
-    let shown = '';
-    const chunks = text.match(/.{1,24}/gs) ?? [];
-    let i = 0;
-
-    const tick = () => {
-      if (i >= chunks.length) {
-        state.messages.push({ role: 'assistant', content: text, ...(proposal ? { proposal } : {}) });
-        if (proposal) {
-          state.pendingProposal = proposal;
-          appendProposal(proposal);
-        }
-        persistState();
-        state.streaming = false;
-        $('#chatSend').disabled = false;
-        log.scrollTop = log.scrollHeight;
-        return;
-      }
-      shown += chunks[i++];
-      bubble.textContent = shown;
-      log.scrollTop = log.scrollHeight;
-      setTimeout(tick, 18);
-    };
-    tick();
-  }, 350);
 }
 
 /* ------------------------------------------------------------------ */
+/* Офлайн                                                              */
+/* ------------------------------------------------------------------ */
 
-initBanner();
-initForm();
-initExportImport();
+/**
+ * «Работает офлайн» было неправдой: без service worker сайт открывался без
+ * сети только первые 10 минут, пока жил кэш браузера. sw.js кладёт файлы
+ * сайта в кэш и отдаёт их, когда сети нет.
+ */
+function registerOffline() {
+  if (!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol)) return;
+  navigator.serviceWorker.register('./sw.js').catch(() => {
+    // Без кэша сайт всё равно работает онлайн — молча.
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Старт                                                               */
+/* ------------------------------------------------------------------ */
+
+function onBuilt(roadmap, profile, { edited }) {
+  state.profile = profile;
+  state.roadmap = roadmap;
+  if (!edited) {
+    state.messages = [];
+    state.pendingProposal = null;
+    state.filter = 'all';
+    state.ui = createTimelineUiState();
+    state.calendarUi = createCalendarUiState();
+  }
+  persistState();
+  if (location.hash && location.hash !== '#/') location.hash = '#/';
+  showScreen('roadmap');
+  renderAll();
+  renderChatHistory();
+  window.scrollTo(0, 0);
+  if (edited) toast('План обновлён по новым ответам. Отметки, свои шаги и перенесённые сроки сохранены.');
+}
+
+function init() {
+  const result = store.loadState();
+
+  if (result.status === 'corrupt') {
+    showRecovery(result.raw);
+    return;
+  }
+
+  if (result.status === 'ok' && result.data.roadmap) {
+    state.profile = sanitizeProfile(result.data.profile);
+    // localStorage — тоже внешний источник: туда может записать любой скрипт
+    // на этом домене, поэтому сохранённый план проходит ту же проверку, что
+    // и файл. normalizeRoadmap заодно чинит порядок шагов старых версий.
+    state.roadmap = normalizeRoadmap(sanitizeRoadmap(result.data.roadmap));
+    state.messages = sanitizeMessages(result.data.messages);
+    state.pendingProposal = sanitizeProposal(result.data.pendingProposal);
+    state.meta = sanitizeMeta(result.data.meta);
+    renderAll();
+    renderChatHistory();
+    applyRoute();
+    return;
+  }
+
+  showScreen('intake');
+}
+
+$('#globalBannerClose').addEventListener('click', () => {
+  $('#globalBanner').hidden = true;
+});
+initIntake(state, {
+  onBuilt,
+  onCancel: () => {
+    closeEdit();
+    applyRoute();
+  },
+});
+initCommands();
+initMenu();
+initImport();
 initPrintExpand();
 initFilters(state);
-// timeline.js уже перерисовывает себя после любой мутации (renderTimeline
-// внутри refreshRoadmap) — здесь только персистенция в localStorage.
-initTimeline(state, () => persistState());
-// Страница шага пишет в те же данные — после её правок сохраняем и держим
-// список в актуальном виде, чтобы отметка была видна при возврате назад.
+initTimeline(state, () => persistState(), { onEditDate: () => startEdit({ focusDate: true }) });
+// Страница шага и календарь пишут в те же данные: после их правок сохраняем
+// и пересобираем список, чтобы «что делать сейчас» не разошлось с ними.
 initStepView(state, () => {
   persistState();
   renderAll();
 });
-// Календарь двигает те же дедлайны, что и список: после его правок нужно
-// сохранить и пересобрать таймлайн, чтобы порядок и «что делать сейчас»
-// не разошлись с сеткой.
 initCalendar(state, {
   onChange: () => {
     persistState();
     renderAll();
   },
   onExportIcs: () => {
-    const count = exportCalendar(state);
-    if (!count) {
+    if (!exportCalendar(state)) {
       showBanner(
-        'В плане нет ни одного шага с проставленной датой, поэтому в файл календаря нечего выгружать.'
+        'В плане нет ни одного шага с датой, поэтому в файл календаря нечего выгружать. ' +
+          'Укажите, когда начинается учёба («Ещё» → «Изменить ответы»), или проставьте сроки на карточках шагов.'
       );
     }
   },
 });
-initRouter();
-initChat();
+initChat({ state, persist: persistState, rerender: renderAll });
+window.addEventListener('hashchange', applyRoute);
 init();
+registerOffline();

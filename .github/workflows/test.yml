@@ -1,0 +1,33 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: austria-way
+      # Ядро копируется отсюда в ai-roadmap-demo; проверяем, что копия
+      # там не разошлась с этой.
+      - uses: actions/checkout@v4
+        with:
+          repository: stellasdeutsch-dev/ai-roadmap-demo
+          path: ai-roadmap
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Модульные тесты
+        working-directory: austria-way
+        run: npm test
+      - name: Ядро совпадает с ai-roadmap-demo
+        working-directory: austria-way
+        run: bash scripts/sync-core.sh --check
+      - name: Проверка в Chrome
+        working-directory: austria-way
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+        run: npm run smoke

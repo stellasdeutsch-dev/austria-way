@@ -62,6 +62,7 @@ function sanitizeStep(step) {
     deadline: isIsoDate(step.deadline) ? step.deadline : '',
     deadlineNote: text(step.deadlineNote, 400),
     deadlineEdited: Boolean(step.deadlineEdited),
+    userEdited: Boolean(step.userEdited),
     estimateDays: Number.isFinite(days) && days >= 0 ? Math.round(Math.min(days, 3650)) : 0,
     checklist: sanitizeChecklist(step.checklist),
     custom: Boolean(step.custom),
@@ -75,6 +76,7 @@ export function sanitizeRoadmap(roadmap) {
     title: text(roadmap.title, 300),
     summary: text(roadmap.summary),
     notes: text(roadmap.notes),
+    removedStepIds: list(roadmap.removedStepIds).slice(0, 200).map((id) => text(id, 120)),
     openQuestions: list(roadmap.openQuestions).slice(0, 50).map((q) => text(q, 600)),
     contacts: list(roadmap.contacts).slice(0, 30).map((c) => ({
       label: text(c?.label, 200),
