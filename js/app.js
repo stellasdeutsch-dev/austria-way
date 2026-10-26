@@ -22,6 +22,7 @@ import { heuristicReply } from './assistant.js';
 import { exportPdf, exportPlan, importPlanFile, downloadRaw, exportCalendar } from './exporter.js';
 import { renderStepPage, initStepView, currentStepId } from './stepview.js';
 import { renderCalendar, initCalendar, createCalendarUiState } from './calendar.js';
+import { sanitizeRoadmap, sanitizeProposal, sanitizeMessages } from './sanitize.js';
 
 const state = {
   profile: null,
@@ -72,6 +73,18 @@ window.addEventListener('unhandledrejection', () => {
   showBanner('Произошла непредвиденная ошибка интерфейса. Попробуйте обновить страницу — план сохранён в этом браузере, скачайте его файлом, если хотите подстраховаться.');
 });
 
+/** Анкета из файла или хранилища: только строковые поля разумной длины. */
+function sanitizeProfile(profile) {
+  if (!profile || typeof profile !== 'object') return null;
+  const out = {};
+  for (const [k, v] of Object.entries(profile)) {
+    if (typeof k === 'string' && k.length < 40 && (typeof v === 'string' || typeof v === 'number')) {
+      out[k] = String(v).slice(0, 500);
+    }
+  }
+  return out;
+}
+
 /* ------------------------------------------------------------------ */
 /* Инициализация и экраны                                              */
 /* ------------------------------------------------------------------ */
@@ -85,14 +98,16 @@ function init() {
   }
 
   if (result.status === 'ok' && result.data.roadmap) {
-    state.profile = result.data.profile ?? null;
+    state.profile = sanitizeProfile(result.data.profile);
     // Прогоняем через normalizeRoadmap даже уже сохранённые данные: чек-листы
     // могут быть в старом формате (миграция в store.js это чинит), а порядок
     // шагов — не соответствовать текущему порядку фаз, если план сохранён
     // версией до этого исправления.
-    state.roadmap = normalizeRoadmap(result.data.roadmap);
-    state.messages = result.data.messages ?? [];
-    state.pendingProposal = result.data.pendingProposal ?? null;
+    // localStorage — тоже внешний источник: туда может записать любой скрипт
+    // на этом домене, поэтому сохранённый план проходит ту же проверку, что и файл.
+    state.roadmap = normalizeRoadmap(sanitizeRoadmap(result.data.roadmap));
+    state.messages = sanitizeMessages(result.data.messages);
+    state.pendingProposal = sanitizeProposal(result.data.pendingProposal);
     renderAll();
     renderChatHistory();
     // Маршрут решает, что показать: список или конкретный шаг по прямой ссылке.
@@ -358,10 +373,11 @@ function initExportImport() {
     if (!file) return;
     try {
       const data = await importPlanFile(file);
-      state.profile = data.profile ?? null;
-      state.roadmap = normalizeRoadmap(data.roadmap);
-      state.messages = Array.isArray(data.messages) ? data.messages : [];
-      state.pendingProposal = data.pendingProposal ?? null;
+      // Файл плана — чужие данные: им делятся, его скачивают из чатов.
+      state.profile = sanitizeProfile(data.profile);
+      state.roadmap = normalizeRoadmap(sanitizeRoadmap(data.roadmap));
+      state.messages = sanitizeMessages(data.messages);
+      state.pendingProposal = sanitizeProposal(data.pendingProposal);
       state.filter = 'all';
       state.ui = createTimelineUiState();
       persistState();

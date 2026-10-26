@@ -247,3 +247,54 @@ test('официальные ссылки сверялись не больше �
   const days = (Date.now() - new Date(`${iso}T12:00:00`)) / 86400000;
   assert.ok(days <= 365, `ссылки сверялись ${Math.floor(days)} дн. назад — пора перепроверить`);
 });
+
+/* ------------------------------------------------------------------ */
+/* Граница доверия: файл плана и localStorage                          */
+/* ------------------------------------------------------------------ */
+
+const { sanitizeRoadmap, sanitizeProposal, safeUrl, isIsoDate } = await import('../js/sanitize.js');
+const { formatDate, esc } = await import('../js/utils.js');
+
+test('подложенный план: статус, дата, ссылки и числа приводятся к безопасной форме', () => {
+  const evil = build(TYPICAL);
+  const s = evil.steps[0];
+  s.status = 'done" onmouseover="alert(1)" x="';
+  s.deadline = '2027-01-01"><img src=x onerror=alert(1)>';
+  s.estimateDays = '5"><img src=x onerror=alert(1)>';
+  s.checklist = ['<b>строка</b>', { text: 42, done: 'yes' }];
+  evil.contacts = [{ label: 'x', value: 'y', url: 'javascript:alert(1)' }, { label: 'ok', value: 'ok', url: 'https://example.org/a' }];
+  evil.steps.push('не объект', null);
+
+  const clean = sanitizeRoadmap(evil);
+  const c = clean.steps[0];
+  assert.equal(c.status, 'not_started');
+  assert.equal(c.deadline, '');
+  assert.equal(c.estimateDays, 0);
+  assert.deepEqual(c.checklist, [{ text: '<b>строка</b>', done: false }, { text: '42', done: true }]);
+  assert.equal(clean.contacts[0].url, '');
+  assert.equal(clean.contacts[1].url, 'https://example.org/a');
+  assert.equal(clean.steps.length, evil.steps.length - 2);
+});
+
+test('formatDate никогда не возвращает непроверенную строку', () => {
+  assert.equal(formatDate('<img src=x onerror=alert(1)>'), '');
+  assert.equal(formatDate(undefined), '');
+  assert.match(formatDate('2027-05-04'), /2027/);
+});
+
+test('дата и ссылка: только настоящие значения', () => {
+  for (const bad of ['2027-02-30', '2027-13-01', '1999-01-01', '2027-1-1', '', null]) assert.equal(isIsoDate(bad), false, String(bad));
+  assert.equal(isIsoDate('2028-02-29'), true);
+  for (const bad of ['javascript:alert(1)', 'data:text/html,x', 'vbscript:x', ' ', 'not a url']) assert.equal(safeUrl(bad), '', bad);
+});
+
+test('отложенное предложение чата из файла не может подсунуть битую дату', () => {
+  const p = sanitizeProposal({ id: 'p', rationale: 'r', operations: [
+    { op: 'update_step', stepId: 'a', deadline: '<svg onload=alert(1)>' },
+    { op: 'drop_table', stepId: 'b' },
+  ] });
+  assert.equal(p.operations.length, 1);
+  assert.equal(p.operations[0].deadline, '');
+  assert.equal(sanitizeProposal({ operations: [{ op: 'nope' }] }), null);
+  assert.equal(esc('"<>'), '&quot;&lt;&gt;');
+});

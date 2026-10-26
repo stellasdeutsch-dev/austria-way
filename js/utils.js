@@ -11,9 +11,11 @@ export function esc(value) {
 }
 
 export function formatDate(isoDate) {
-  if (!isoDate) return '';
+  // Непонятное значение раньше возвращалось как есть и уходило в разметку —
+  // так подложенный файл плана исполнял код. Теперь только настоящая дата.
+  if (typeof isoDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return '';
   const d = new Date(`${isoDate}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return isoDate;
+  if (Number.isNaN(d.getTime())) return '';
   return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 

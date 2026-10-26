@@ -18,7 +18,7 @@ TARGETS=("${SYNC_TARGETS:-$HERE/../ai-roadmap}")
 
 CORE=(
   js/utils.js js/store.js js/assistant.js js/timeline.js js/stepview.js
-  js/exporter.js js/calendar.js js/pdf.js
+  js/exporter.js js/calendar.js js/pdf.js js/sanitize.js
   css/app.css
   fonts/inter-cyrillic.woff2 fonts/inter-latin.woff2 fonts/inter-latin-ext.woff2
   fonts/pdf-regular.ttf fonts/pdf-semibold.ttf

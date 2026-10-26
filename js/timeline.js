@@ -410,7 +410,7 @@ function stepMarkup(step) {
     : '';
 
   return `
-    <li class="tl-item" id="step-${esc(step.id)}" data-status="${step.status}" data-step="${esc(step.id)}"
+    <li class="tl-item" id="step-${esc(step.id)}" data-status="${esc(step.status)}" data-step="${esc(step.id)}"
         data-phase="${esc(step.phase)}" data-tone="${toneOf(step.phase)}">
       <span class="tl-marker" aria-hidden="true">
         ${
@@ -448,7 +448,7 @@ function stepMarkup(step) {
 function stepEditMarkup(step) {
   const checklistText = (step.checklist ?? []).map((i) => esc(i.text)).join('\n');
   return `
-    <li class="tl-item is-editing" data-status="${step.status}" data-step="${esc(step.id)}">
+    <li class="tl-item is-editing" data-status="${esc(step.status)}" data-step="${esc(step.id)}">
       <span class="tl-marker" aria-hidden="true">${step.status === 'done' ? '✓' : step.order}</span>
       <form class="tl-card tl-edit-form" data-action="save-edit" data-step="${esc(step.id)}">
         <label class="field">
@@ -517,7 +517,7 @@ function deadlineTag(step) {
     const days = daysUntil(step.deadline);
     const cls = days < 0 ? 'due-past' : days <= 14 ? 'due-soon' : 'due';
     const suffix = days < 0 ? `просрочено на ${Math.abs(days)} дн.` : days === 0 ? 'сегодня' : `через ${days} дн.`;
-    return `<span class="tag ${cls}">${formatDate(step.deadline)} · ${suffix}</span>`;
+    return `<span class="tag ${cls}">${esc(formatDate(step.deadline))} · ${suffix}</span>`;
   }
   if (step.deadlineNote) return `<span class="tag">${esc(step.deadlineNote)}</span>`;
   return '';
